@@ -188,6 +188,7 @@ else:
     st.markdown('<h2 style="color: #0C2340; text-align: center; font-weight: bold;">PLANTA METALES Y MAQUINADOS</h2>', unsafe_allow_html=True)
     st.markdown('<p class="main-title" style="text-align: center;">MATRIZ DE COMUNICACIÓN EFECTIVA</p>', unsafe_allow_html=True)
 
+# REGRESO DE MENÚS ORIGINALES (Sin emojis ni textos modificados que causen cruces de código)
 opcion_menu = st.sidebar.radio("Navegación", ["📊 Dashboard Principal", "📋 Tabla de Control", "📝 Actualizar Mis Avances", "📥 Cargar Actividades (Usuario)", "🔐 Panel Administrador"])
 if opcion_menu == "📊 Dashboard Principal":
     st.markdown("### Resumen Ejecutivo de la Planta")
@@ -224,14 +225,14 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
         id_tarea = st.selectbox("Seleccione el No. de Tarea que desea actualizar:", df_actual["No"].tolist())
         idx = df_actual[df_actual["No"] == id_tarea].index
         
-        # Extracción segura de valores sin importar si vienen indexados como series
-        val_no = df_actual.at[idx[0], 'No']
-        val_area = df_actual.at[idx[0], 'Area']
-        val_resp = df_actual.at[idx[0], 'Responsable']
-        val_prio = df_actual.at[idx[0], 'Prioridad']
-        val_desc = df_actual.at[idx[0], 'Descripcion']
-        val_avance = df_actual.at[idx[0], '% Avance']
-        val_coment = df_actual.at[idx[0], 'Comentario']
+        # Extracción segura de valores sin importar el tipo de indexación
+        val_no = df_actual.loc[idx, 'No'].values[0] if hasattr(df_actual.loc[idx, 'No'], 'values') else df_actual.loc[idx, 'No']
+        val_area = df_actual.loc[idx, 'Area'].values[0] if hasattr(df_actual.loc[idx, 'Area'], 'values') else df_actual.loc[idx, 'Area']
+        val_resp = df_actual.loc[idx, 'Responsable'].values[0] if hasattr(df_actual.loc[idx, 'Responsable'], 'values') else df_actual.loc[idx, 'Responsable']
+        val_prio = df_actual.loc[idx, 'Prioridad'].values[0] if hasattr(df_actual.loc[idx, 'Prioridad'], 'values') else df_actual.loc[idx, 'Prioridad']
+        val_desc = df_actual.loc[idx, 'Descripcion'].values[0] if hasattr(df_actual.loc[idx, 'Descripcion'], 'values') else df_actual.loc[idx, 'Descripcion']
+        val_avance = df_actual.loc[idx, '% Avance'].values[0] if hasattr(df_actual.loc[idx, '% Avance'], 'values') else df_actual.loc[idx, '% Avance']
+        val_coment = df_actual.loc[idx, 'Comentario'].values[0] if hasattr(df_actual.loc[idx, 'Comentario'], 'values') else df_actual.loc[idx, 'Comentario']
         
         st.markdown(f"""
         <div class="card">
@@ -248,8 +249,8 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
             guardar_cambio = st.form_submit_button("Sincronizar Avance en GitHub")
             
             if guardar_cambio:
-                df_actual.at[idx[0], "% Avance"] = nuevo_avance
-                df_actual.at[idx[0], "Comentario"] = nuevo_comentario
+                df_actual.loc[idx, "% Avance"] = nuevo_avance
+                df_actual.loc[idx, "Comentario"] = nuevo_comentario
                 st.session_state.actividades = df_actual
                 
                 if guardar_registros_excel(st.session_state.actividades):
@@ -279,7 +280,7 @@ elif opcion_menu == "📥 Cargar Actividades (Usuario)":
                 "No": nuevo_no,
                 "Origen": origen,
                 "Fecha Inicio": datetime.now().strftime("%d-%b-%y"),
-                "Prioridad": priority if 'priority' in globals() else prioridad,
+                "Prioridad": prioridad,
                 "Responsable": responsable,
                 "Area": area,
                 "Descripcion": descripcion,
@@ -303,3 +304,4 @@ elif opcion_menu == "🔐 Panel Administrador":
         st.session_state.actividades = importar_registros_excel()
         st.success("Sincronización forzada completada con éxito.")
         st.rerun()
+
