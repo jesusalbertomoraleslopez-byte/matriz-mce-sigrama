@@ -116,7 +116,7 @@ def crear_grafico_pareto(df, columna, titulo):
     
     fig.update_layout(
         yaxis=dict(title="Cantidad de Actividades"), 
-        yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=[0, 100]), 
+        yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=[0, 110]), 
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), 
         template="plotly_white", barmode="stack"
     )
@@ -157,7 +157,6 @@ if opcion_menu == "📊 Dashboard Principal":
     with g1: st.plotly_chart(crear_grafico_pareto(df_f, "Origen", "Pareto 1: Actividades vs Cantidad"), use_container_width=True)
     with g2: st.plotly_chart(crear_grafico_pareto(df_f, "Responsable", "Pareto 2: Personas vs Cantidad"), use_container_width=True)
     
-    # --- PARETO 3: TÍTULOS DE RESPONSABLES GRANDE Y EN NEGRITAS ---
     st.write("---"); st.subheader("Pareto 3: Estado de Actividades de Líderes Principales")
     lideres_p = ["Jesus Morales", "Bryan Flores", "Cruz Carreon", "Luis Quintana"]
     df_lideres = pd.DataFrame(st.session_state.actividades)[lambda x: x["Responsable"].isin(lideres_p)].copy()
@@ -172,11 +171,7 @@ if opcion_menu == "📊 Dashboard Principal":
         df_lideres["Estado_Real"] = df_lideres.apply(clasificar_vencimientos, axis=1)
         df_lideres["Valor_Eje"] = df_lideres["Estado_Real"].apply(lambda x: -1 if x == "Vencida (Retraso)" else 1)
         
-        fig_l = px.bar(
-            df_lideres, x="Origen", y="Valor_Eje", color="Estado_Real", facet_col="Responsable", facet_col_wrap=2, 
-            color_discrete_map={"Terminada": "#2ECC71", "Pendiente a Tiempo": "#FEEA9A", "Vencida (Retraso)": "#E74C3C"}, 
-            labels={"Origen": "Clasificación", "Valor_Eje": "Tareas"}
-        )
+        fig_l = px.bar(df_lideres, x="Origen", y="Valor_Eje", color="Estado_Real", facet_col="Responsable", facet_col_wrap=2, color_discrete_map={"Terminada": "#2ECC71", "Pendiente a Tiempo": "#FEEA9A", "Vencida (Retraso)": "#E74C3C"}, labels={"Origen": "Clasificación", "Valor_Eje": "Tareas"})
         fig_l.update_layout(barmode="stack", template="plotly_white", height=600, legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"))
         fig_l.for_each_annotation(lambda a: a.update(text=f"<b>👤 {a.text.split('=')[-1].upper()}</b>", font=dict(size=14, color="#0C2340")))
         st.plotly_chart(fig_l, use_container_width=True)
@@ -213,7 +208,7 @@ elif opcion_menu == "📋 Tabla de Control":
         df_estilizado = df_mostrar.style.apply(aplicar_colores_renglon, axis=1).format({"% Avance": "{:.0f}%"})
         st.dataframe(df_estilizado, use_container_width=True, hide_index=True)
     else: st.info("No se encontraron registros.")
-# --- TAB 3: ACTUALIZAR MIS AVANCES (DISEÑO COMPACTO, PLOT VERTICAL Y MINI-THUMBNAIL 800x600 DE RESPALDO) ---
+# --- TAB 3: ACTUALIZAR MIS AVANCES (CON FIX DE MUTACIÓN DIRECTA EN DATA FRAME .LOC) ---
 elif opcion_menu == "📝 Actualizar Mis Avances":
     st.subheader("Actualización de Avances de Tareas")
     u = st.selectbox("Identifícate (Selecciona tu nombre)", list(st.session_state.personal.keys()))
@@ -264,21 +259,20 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
                                     if img_abierta.mode in ("RGBA", "P"):
                                         img_abierta = img_abierta.convert("RGB")
                                     
-                                    # Ajuste automático al estándar de baja resolución sin deformar
                                     img_abierta.thumbnail((800, 600), Image.Resampling.LANCZOS)
                                     
                                     stamp = datetime.now().strftime("%Y%m%d")
                                     nombre_archivo_final = f"MCE-{int(r['No']):03d} evidencia ({stamp}).jpg"
                                     ruta_foto_final = os.path.join(CARPETA_EVIDENCIAS, nombre_archivo_final)
-                                    
-                                    # Guardado físico ligero con compresión JPG en frío
                                     img_abierta.save(ruta_foto_final, "JPEG", quality=65)
                                 except Exception as err_img:
                                     st.error(f"Error al procesar la imagen física: {err_img}")
                             
-                            st.session_state.actividades.at[idx, "% Avance"] = nv_av
-                            st.session_state.actividades.at[idx, "Comentario"] = nv_co
-                            st.session_state.actividades.at[idx, "Evidencia"] = ruta_foto_final
+                            # FIX DEFINITIVO: Forzamos la mutación directa en la base de datos de la sesión usando .loc
+                            st.session_state.actividades.loc[idx, "% Avance"] = int(nv_av)
+                            st.session_state.actividades.loc[idx, "Comentario"] = str(nv_co)
+                            st.session_state.actividades.loc[idx, "Evidencia"] = str(ruta_foto_final)
+                            
                             st.success("¡Avance registrado exitosamente!"); st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
