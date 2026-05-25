@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -135,7 +134,7 @@ def guardar_registros_excel(df_actualizado):
 
 # Carga inicial de datos compartida en memoria
 if 'actividades' not in st.session_state:
-    st.session_state.actividades = importing_registros_excel() if 'importing_registros_excel' in globals() else  importar_registros_excel()
+    st.session_state.actividades = importar_registros_excel()
 if 'personal' not in st.session_state:
     st.session_state.personal = [
         "Jesus Morales", "Ing. Alfredo Hdz", "Ing. Lorena Hdz", "Jesús Alday",
@@ -225,23 +224,32 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
         id_tarea = st.selectbox("Seleccione el No. de Tarea que desea actualizar:", df_actual["No"].tolist())
         idx = df_actual[df_actual["No"] == id_tarea].index
         
+        # Extracción segura de valores sin importar si vienen indexados como series
+        val_no = df_actual.at[idx[0], 'No']
+        val_area = df_actual.at[idx[0], 'Area']
+        val_resp = df_actual.at[idx[0], 'Responsable']
+        val_prio = df_actual.at[idx[0], 'Prioridad']
+        val_desc = df_actual.at[idx[0], 'Descripcion']
+        val_avance = df_actual.at[idx[0], '% Avance']
+        val_coment = df_actual.at[idx[0], 'Comentario']
+        
         st.markdown(f"""
         <div class="card">
-            <div class="card-header">Tarea No. {df_actual.at[idx, 'No'].values[0] if hasattr(df_actual.at[idx, 'No'], 'values') else df_actual.at[idx, 'No']} - {df_actual.at[idx, 'Area'].values[0] if hasattr(df_actual.at[idx, 'Area'], 'values') else df_actual.at[idx, 'Area']}</div>
-            <div class="card-desc"><b>Responsable:</b> {df_actual.at[idx, 'Responsable'].values[0] if hasattr(df_actual.at[idx, 'Responsable'], 'values') else df_actual.at[idx, 'Responsable']} | <b>Prioridad:</b> {df_actual.at[idx, 'Prioridad'].values[0] if hasattr(df_actual.at[idx, 'Prioridad'], 'values') else df_actual.at[idx, 'Prioridad']}</div>
-            <div class="card-desc"><b>Descripción:</b> {df_actual.at[idx, 'Descripcion'].values[0] if hasattr(df_actual.at[idx, 'Descripcion'], 'values') else df_actual.at[idx, 'Descripcion']}</div>
+            <div class="card-header">Tarea No. {val_no} - {val_area}</div>
+            <div class="card-desc"><b>Responsable:</b> {val_resp} | <b>Prioridad:</b> {val_prio}</div>
+            <div class="card-desc"><b>Descripción:</b> {val_desc}</div>
         </div>
         """, unsafe_allow_html=True)
         
         with st.form("form_actualizar_avance"):
-            nuevo_avance = st.slider("Nuevo % de Avance", min_value=0, max_value=100, value=int(df_actual.at[idx, "% Avance"].values[0] if hasattr(df_actual.at[idx, '% Avance'], 'values') else df_actual.at[idx, '% Avance']), step=5)
-            nuevo_comentario = st.text_area("Comentarios de Seguimiento", value=str(df_actual.at[idx, "Comentario"].values[0] if hasattr(df_actual.at[idx, 'Comentario'], 'values') else df_actual.at[idx, 'Comentario']))
+            nuevo_avance = st.slider("Nuevo % de Avance", min_value=0, max_value=100, value=int(val_avance), step=5)
+            nuevo_comentario = st.text_area("Comentarios de Seguimiento", value=str(val_coment))
             
             guardar_cambio = st.form_submit_button("Sincronizar Avance en GitHub")
             
             if guardar_cambio:
-                df_actual.at[idx, "% Avance"] = nuevo_avance
-                df_actual.at[idx, "Comentario"] = nuevo_comentario
+                df_actual.at[idx[0], "% Avance"] = nuevo_avance
+                df_actual.at[idx[0], "Comentario"] = nuevo_comentario
                 st.session_state.actividades = df_actual
                 
                 if guardar_registros_excel(st.session_state.actividades):
@@ -271,7 +279,7 @@ elif opcion_menu == "📥 Cargar Actividades (Usuario)":
                 "No": nuevo_no,
                 "Origen": origen,
                 "Fecha Inicio": datetime.now().strftime("%d-%b-%y"),
-                "Prioridad": prioridad,
+                "Prioridad": priority if 'priority' in globals() else prioridad,
                 "Responsable": responsable,
                 "Area": area,
                 "Descripcion": descripcion,
