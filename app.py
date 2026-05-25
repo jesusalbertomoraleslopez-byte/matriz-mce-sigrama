@@ -40,7 +40,7 @@ def importar_registros_excel():
                                 return str(val)
                         df[col_fecha] = df[col_fecha].apply(corregir_fecha_serial)
 
-                # Control estricto de porcentajes y consecutivos numéricos
+                # Control estricto de porcentajes y consecutivos numéricos dentro del dataframe
                 if "% Avance" in df.columns:
                     if df["% Avance"].max() <= 1.0 and df["% Avance"].max() > 0:
                         df["% Avance"] = df["% Avance"] * 100
@@ -68,7 +68,6 @@ def importar_registros_excel():
 # Carga inicial de datos desde memoria persistente
 if 'actividades' not in st.session_state:
     st.session_state.actividades = importar_registros_excel()
-
 # 2. Configuración de la interfaz web corporativa (Fondo Gris Claro de Planta)
 st.set_page_config(page_title="SIGRAMA - Matriz MCE", layout="wide")
 
@@ -139,7 +138,6 @@ else:
     st.markdown('<p class="main-title" style="text-align: center;">MATRIZ DE COMUNICACIÓN EFECTIVA</p>', unsafe_allow_html=True)
 
 opcion_menu = st.sidebar.radio("Navegación", ["📊 Dashboard Principal", "📋 Tabla de Control", "📝 Actualizar Mis Avances", "📥 Cargar Actividades (Usuario)", "🔐 Panel Administrador"])
-
 # --- TAB 1: DASHBOARD PRINCIPAL ---
 if opcion_menu == "📊 Dashboard Principal":
     col_f1, col_f2 = st.columns(2)
@@ -159,7 +157,6 @@ if opcion_menu == "📊 Dashboard Principal":
     with g1: st.plotly_chart(crear_grafico_pareto(df_f, "Origen", "Pareto 1: Actividades vs Cantidad"), use_container_width=True)
     with g2: st.plotly_chart(crear_grafico_pareto(df_f, "Responsable", "Pareto 2: Personas vs Cantidad"), use_container_width=True)
     
-    # --- PARETO 3: TÍTULOS DE RESPONSABLES GRANDE Y EN NEGRITAS ---
     st.write("---"); st.subheader("Pareto 3: Estado de Actividades de Líderes Principales")
     lideres_p = ["Jesus Morales", "Bryan Flores", "Cruz Carreon", "Luis Quintana"]
     df_lideres = pd.DataFrame(st.session_state.actividades)[lambda x: x["Responsable"].isin(lideres_p)].copy()
@@ -216,7 +213,7 @@ elif opcion_menu == "📋 Tabla de Control":
         st.dataframe(df_estilizado, use_container_width=True, hide_index=True)
     else: st.info("No se encontraron registros.")
 
-# --- TAB 3: ACTUALIZAR MIS AVANCES ---
+# --- TAB 3: ACTUALIZAR MIS AVANCES (CON IMPACTO EN CALIENTE DIRECTO EN EXCEL) ---
 elif opcion_menu == "📝 Actualizar Mis Avances":
     st.subheader("Actualización de Avances de Tareas")
     u = st.selectbox("Identifícate (Selecciona tu nombre)", list(st.session_state.personal.keys()))
@@ -261,15 +258,13 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
                             if foto is not None:
                                 try:
                                     img_abierta = Image.open(foto)
-                                    if img_abierta.mode in ("RGBA", "P"):
-                                        img_abierta = img_abierta.convert("RGB")
+                                    if img_abierta.mode in ("RGBA", "P"): img_abierta = img_abierta.convert("RGB")
                                     img_abierta.thumbnail((800, 600), Image.Resampling.LANCZOS)
                                     stamp = datetime.now().strftime("%Y%m%d")
                                     nombre_archivo_final = f"MCE-{int(r['No']):03d} evidencia ({stamp}).jpg"
                                     ruta_foto_final = os.path.join(CARPETA_EVIDENCIAS, nombre_archivo_final)
                                     img_abierta.save(ruta_foto_final, "JPEG", quality=65)
-                                except Exception as err_img:
-                                    st.error(f"Error al procesar la imagen física: {err_img}")
+                                except Exception as err_img: st.error(f"Error al procesar la imagen física: {err_img}")
                             
                             st.session_state.actividades.loc[idx, "% Avance"] = int(nv_av)
                             st.session_state.actividades.loc[idx, "Comentario"] = str(nv_co)
@@ -278,8 +273,7 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
                             try:
                                 st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
                                 st.success("¡Avance registrado exitosamente en caliente!"); st.rerun()
-                            except Exception as e_save:
-                                st.error(f"Fallo al escribir en la base de datos Excel: {e_save}")
+                            except Exception as e_save: st.error(f"Fallo al escribir en Excel: {e_save}")
                     st.markdown('</div>', unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 # --- TAB 4: CARGAR ACTIVIDADES UNIVERSALES ---
@@ -293,63 +287,18 @@ elif opcion_menu == "📥 Cargar Actividades (Usuario)":
                 n_id = int(st.session_state.actividades["No"].max() + 1) if not st.session_state.actividades.empty else 1
                 n_f = {"No": n_id, "Origen": o, "Fecha Inicio": datetime.now().strftime("%d-%b-%y"), "Prioridad": p, "Responsable": r, "Area": a, "Descripcion": d, "% Avance": 0, "Fecha Compromiso": f.strftime("%d-%b-%y"), "Comentario": "", "Evidencia": ""}
                 st.session_state.actividades = pd.concat([st.session_state.actividades, pd.DataFrame([n_f])], ignore_index=True)
-                st.success("¡Registrada!"); st.rerun()
+                try:
+                    st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
+                    st.success("¡Registrada con éxito!"); st.rerun()
+                except Exception as e_add: st.error(f"Fallo al escribir en Excel: {e_add}")
 
 # --- TAB 5: PANEL ADMINISTRADOR MÁSTER ---
 elif opcion_menu == "🔐 Panel Administrador":
     st.markdown('<p class="admin-header">Panel de Control Máster</p>', unsafe_allow_html=True)
     if st.text_input("Introduce la contraseña Máster:", type="password") == "SigramaMetales2026":
         st.subheader("Consola de Sincronización de Base de Datos (Excel)")
-        c_adm1, c_adm2 = st.columns(2)
-        with c_adm1:
-            if st.button("📥 IMPORTAR BASE DE DATOS DESDE EXCEL", use_container_width=True):
-                st.session_state.actividades = importar_registros_excel()
-                st.success("¡Datos importados!"); st.rerun()
-        with c_adm2:
-            # CORRECCIÓN DE MANEJO DE EXCEPCIONES: Se remueve la f-string rota de la línea 370 y se implementa el exportador avanzado con colores y desplegables nativos
-            if st.button("💾 RESPALDAR BASE DE DATOS COMPLETA EN DISCO", type="primary", use_container_width=True):
-                try:
-                    df_guardar = pd.DataFrame(st.session_state.actividades)
-                    with pd.ExcelWriter(ARCHIVO_DB, engine='openpyxl') as w:
-                        df_guardar.to_excel(w, index=False, sheet_name='Base_MCE')
-                        ws = w.sheets['Base_MCE']
-                        # Definición exacta de anchos automáticos de columna
-                        anchos = {'A': 10, 'B': 25, 'C': 15, 'D': 15, 'E': 22, 'F': 18, 'G': 45, 'H': 12, 'I': 20, 'J': 25, 'K': 40}
-                        for col, ancho in anchos.items(): 
-                            ws.column_dimensions[col].width = ancho
-                        
-                        # Inyección nativa de Listas Desplegables de validación en el archivo físico
-                        from openpyxl.worksheet.datavalidation import DataValidation
-                        from openpyxl.styles import PatternFill, Font
-                        dv_o = DataValidation(type="list", formula1=f'"{",".join(LISTA_CLASIFICACIONES)}"', allow_blank=True)
-                        dv_p = DataValidation(type="list", formula1='"Baja,Media,Urgente"', allow_blank=True)
-                        dv_r = DataValidation(type="list", formula1=f'"{",".join(list(st.session_state.personal.keys()))}"', allow_blank=True)
-                        dv_a = DataValidation(type="list", formula1=f'"{",".join(st.session_state.areas)}"', allow_blank=True)
-                        dv_o.add("B2:B1000"); dv_p.add("D2:D1000"); dv_r.add("E2:E1000"); dv_a.add("F2:F1000")
-                        ws.add_data_validation(dv_o); ws.add_data_validation(dv_p); ws.add_data_validation(dv_r); ws.add_data_validation(dv_a)
-                        
-                        # MOTOR DE FORMATEO CROMÁTICO EN EL ARCHIVO FISCO DE EXCEL AL DESCARGAR
-                        fill_verde = PatternFill(start_color="D4EDDA", end_color="D4EDDA", fill_type="solid")
-                        fill_amarillo = PatternFill(start_color="FFF3CD", end_color="FFF3CD", fill_type="solid")
-                        font_verde = Font(color="155724", bold=True)
-                        font_amarillo = Font(color="856404", bold=True)
-                        
-                        for row in range(2, ws.max_row + 1):
-                            cell_avance = ws.cell(row=row, column=8) # Columna H (% Avance)
-                            if cell_avance.value is not None:
-                                try:
-                                    val_num = int(cell_avance.value)
-                                    if val_num == 100:
-                                        for col in range(1, 12): ws.cell(row=row, column=col).fill = fill_verde
-                                        cell_avance.font = font_verde
-                                    elif val_num > 0:
-                                        for col in range(1, 12): ws.cell(row=row, column=col).fill = fill_amarillo
-                                        cell_avance.font = font_amarillo
-                                except: pass
-                    st.success("✅ ¡Base de datos Excel respaldada con formatos condicionales, colores de estatus y listas desplegables integradas!"); st.rerun()
-                except Exception as e_master: 
-                    st.error(f"Error crítico al guardar el archivo en el servidor: {e_master}")
-        st.write("---")
+        
+        # INTERFAZ SOBERANA DE EDICIÓN DIRECTA ESTILO EXCEL CON FORMATOS INTEGRADOS
         t1, t2, t3 = st.tabs(["➕ Altas Catálogos", "✏️ Tabla de Edición Directa y Bajas", "📥 Carga Masiva Excel"])
         with t1:
             n_n = st.text_input("Nombre de Colaborador:")
@@ -374,4 +323,26 @@ elif opcion_menu == "🔐 Panel Administrador":
                     "Comentario": st.column_config.TextColumn("Comentario", width="medium"),
                     "Evidencia": st.column_config.TextColumn("Ruta Evidencia", disabled=True)
                 }
-                df_modificado = st.data_editor(df_editable, column_config=configuracion_columnas, use_container_width=True, hide_index=True, num_rows="dynamic",
+                df_modificado = st.data_editor(df_editable, column_config=configuracion_columnas, use_container_width=True, hide_index=True, num_rows="dynamic", key="editor_tabla_master")
+                
+                # CORRECCIÓN DE PARÉNTESIS Y SINTAXIS: Exportación segura con openpyxl de doble vía
+                if st.button("💾 CONFIRMAR Y GUARDAR CAMBIOS EN LA MATRIZ", type="primary", use_container_width=True):
+                    st.session_state.actividades = df_modificado
+                    try:
+                        st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
+                        st.success("✅ ¡Base de datos actualizada con éxito!"); st.rerun()
+                    except Exception as e_master: st.error(f"Fallo al respaldar cambios en disco: {e_master}")
+            else: st.info("No hay registros vigentes.")
+        with t3:
+            ex = st.file_uploader("Subir Excel modificado", type=["xlsx"])
+            if ex is not None:
+                df_ex = pd.read_excel(ex)
+                if st.button("Confirmar Importación Masiva"):
+                    if "No" not in df_ex.columns: df_ex.insert(0, "No", range(st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1, (st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1) + len(df_ex)))
+                    if "Evidencia" not in df_ex.columns: df_ex["Evidencia"] = ""
+                    st.session_state.actividades = pd.concat([st.session_state.actividades, df_ex], ignore_index=True)
+                    try:
+                        st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
+                        st.success("¡Importado con éxito!"); st.rerun()
+                    except Exception as e_bulk: st.error(f"Error al escribir base masiva: {e_bulk}")
+
