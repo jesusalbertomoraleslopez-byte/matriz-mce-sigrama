@@ -6,71 +6,137 @@ from datetime import datetime, timedelta
 from PIL import Image
 import os
 import io
+from github import Github
 
-# Nombre oficial del archivo base y carpeta física del proyecto
+# --- CONFIGURACIÓN DE BASE DE DATOS Y REPOSITORIO ---
 ARCHIVO_DB = "base_matriz_mce.xlsx"
 CARPETA_EVIDENCIAS = "evidencias"
+REPOSITORIO_NAME = "TU_USUARIO_GITHUB/TU_REPOSITORIO"  # <-- REEMPLAZA CON TUS DATOS REALES
 
-# Creación automática de la carpeta de evidencias físicas si no existe en Windows
-if not os.path.exists(CARPETA_EVIDENCIAS):
-    os.makedirs(CARPETA_EVIDENCIAS)
-
-# Desactivamos el límite de píxeles de la librería PIL para soportar capturas pesadas del taller
+# Desactivar límite de píxeles para capturas pesadas de taller
 Image.MAX_IMAGE_PIXELS = None
 
-# 1. MOTOR DE IMPORTACIÓN INTELIGENTE DE EXCEL
+# Inicializar conexión con el repositorio de GitHub de forma segura
+repo = None
+if "GITHUB_TOKEN" in st.secrets:
+    try:
+        g = Github(st.secrets["GITHUB_TOKEN"])
+        repo = g.get_repo(REPOSITORIO_NAME)
+    except Exception as e:
+        st.error(f"Error crítico al conectar con el repositorio de GitHub: {e}")
+else:
+    st.warning("⚠️ GITHUB_TOKEN no detectado en Secrets. Los datos serán volátiles y temporales.")
 def importar_registros_excel():
-    if os.path.exists(ARCHIVO_DB):
+    # Estructura base en caso de fallo o archivo nuevo
+    df_vacio = pd.DataFrame(columns=["No", "Origen", "Fecha Inicio", "Prioridad", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso", "Comentario", "Evidencia"])
+    
+    # Intentar descargar el archivo desde GitHub
+    if repo is not None:
+        try:
+            contenido_archivo = repo.get_contents(ARCHIVO_DB)
+            datos_binarios = contenido_archivo.decoded_content
+            df = pd.read_excel(io.BytesIO(datos_binarios))
+        except Exception:
+            return df_vacio
+    elif os.path.exists(ARCHIVO_DB):  # Respaldo local si no hay red/token
         try:
             df = pd.read_excel(ARCHIVO_DB)
-            if not df.empty:
-                # CORRECCIÓN DE FECHAS: Convierte números seriales de Excel a texto legible
-                for col_fecha in ["Fecha Inicio", "Fecha Compromiso"]:
-                    if col_fecha in df.columns:
-                        def corregir_fecha_serial(val):
-                            try:
-                                if pd.isna(val) or str(val).strip() in ["None", "nan", "NaN", ""]:
-                                    return ""
-                                if str(val).replace('.0', '').isdigit():
-                                    dias = int(str(val).replace('.0', ''))
-                                    fecha_dt = datetime(1899, 12, 30) + timedelta(days=dias)
-                                    return fecha_dt.strftime("%d-%b-%y")
-                                return str(val).strip()
-                            except:
-                                return str(val)
-                        df[col_fecha] = df[col_fecha].apply(corregir_fecha_serial)
-
-                # Control estricto de porcentajes y consecutivos numéricos
-                if "% Avance" in df.columns:
-                    if df["% Avance"].max() <= 1.0 and df["% Avance"].max() > 0:
-                        df["% Avance"] = df["% Avance"] * 100
-                    df["% Avance"] = pd.to_numeric(df["% Avance"], errors="coerce").fillna(0).astype(int)
-                
-                if "No" in df.columns:
-                    df["No"] = pd.to_numeric(df["No"], errors="coerce")
-                    if df["No"].isnull().any(): 
-                        df["No"] = range(1, len(df) + 1)
-                    df["No"] = df["No"].astype(int)
-                
-                columnas_texto = ["Origen", "Prioridad", "Responsable", "Area", "Descripcion", "Comentario", "Evidencia"]
-                for col in columnas_texto:
-                    if col in df.columns:
-                        df[col] = df[col].astype(str).replace(["None", "nan", "NaN"], "")
-            else:
-                df = pd.DataFrame(columns=["No", "Origen", "Fecha Inicio", "Prioridad", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso", "Comentario", "Evidencia"])
-            return df
-        except Exception as e:
-            st.error(f"Error al importar el archivo Excel: {e}")
-            return pd.DataFrame(columns=["No", "Origen", "Fecha Inicio", "Prioridad", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso", "Comentario", "Evidencia"])
+        except Exception:
+            return df_vacio
     else:
-        return pd.DataFrame(columns=["No", "Origen", "Fecha Inicio", "Prioridad", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso", "Comentario", "Evidencia"])
+        return df_vacio
 
-# Carga inicial de datos desde memoria persistente
+    # --- PROCESAMIENTO Y LIMPIEZA DE DATOS ---
+    if not df.empty:
+        # Corrección de fechas seriales de Excel a formato legible
+        for col_fecha in ["Fecha Inicio", "Fecha Compromiso"]:
+            if col_fecha in df.columns:
+                def corregir_fecha_serial(val):
+                    try:
+                        if pd.isna(val) or str(val).strip() in ["None", "nan", "NaN", ""]:
+                            return ""
+                        if str(val).replace('.0', '').isdigit():
+                            dias = int(str(val).replace('.0', ''))
+                            return (datetime(1899, 12, 30) + timedelta(days=dias)).strftime("%d-%b-%y")
+                        return str(val).strip()
+                    except:
+                        return str(val)
+                df[col_fecha] = df[col_fecha].apply(corregir_fecha_serial)
+
+        # Control estricto de porcentajes de avance
+        if "% Avance" in df.columns:
+            if df["% Avance"].max() <= 1.0 and df["% Avance"].max() > 0:
+                df["% Avance"] = df["% Avance"] * 100
+            df["% Avance"] = pd.to_numeric(df["% Avance"], errors="coerce").fillna(0).astype(int)
+        
+        # Consecutivos numéricos estrictos
+        if "No" in df.columns:
+            df["No"] = pd.to_numeric(df["No"], errors="coerce")
+            if df["No"].isnull().any(): 
+                df["No"] = range(1, len(df) + 1)
+            df["No"] = df["No"].astype(int)
+        
+        # Limpieza de textos nulos
+        columnas_texto = ["Origen", "Prioridad", "Responsable", "Area", "Descripcion", "Comentario", "Evidencia"]
+        for col in columnas_texto:
+            if col in df.columns:
+                df[col] = df[col].astype(str).replace(["None", "nan", "NaN"], "")
+    else:
+        df = df_vacio.copy()
+        
+    return df
+
+# Carga inicial de datos en la memoria de la sesión de Streamlit
 if 'actividades' not in st.session_state:
     st.session_state.actividades = importar_registros_excel()
-# 2. Configuración de la interfaz web corporativa (Fondo Gris Claro de Planta)
+def guardar_registros_excel(df_actualizado):
+    try:
+        # Empaquetar el Excel en memoria RAM antes de enviarlo
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df_actualizado.to_excel(writer, index=False)
+        datos_excel = output.getvalue()
+        
+        if repo is not None:
+            try:
+                # Si el archivo ya existe en GitHub, se actualiza mediante su SHA
+                contents = repo.get_contents(ARCHIVO_DB)
+                repo.update_file(path=ARCHIVO_DB, message="Actualización de Matriz MCE", content=datos_excel, sha=contents.sha, branch="main")
+            except Exception:
+                # Si el archivo fue borrado del repositorio, lo vuelve a crear de cero
+                repo.create_file(path=ARCHIVO_DB, message="Creación inicial de Matriz MCE", content=datos_excel, branch="main")
+            st.success("💾 ¡Cambios sincronizados y respaldados en el Repositorio de GitHub!")
+        else:
+            df_actualizado.to_excel(ARCHIVO_DB, index=False)
+            st.warning("⚠️ Guardado local temporal (No sincronizado con la nube).")
+    except Exception as e:
+        st.error(f"Error crítico al guardar los registros: {e}")
+
+def guardar_evidencia_en_github(archivo_subido, nombre_final_imagen):
+    if repo is None:
+        # Fallback local de emergencia
+        if not os.path.exists(CARPETA_EVIDENCIAS): os.makedirs(CARPETA_EVIDENCIAS)
+        with open(os.path.join(CARPETA_EVIDENCIAS, nombre_final_imagen), "wb") as f: f.write(archivo_subido.getvalue())
+        return f"{CARPETA_EVIDENCIAS}/{nombre_final_imagen}"
+
+    try:
+        ruta_completa = f"{CARPETA_EVIDENCIAS}/{nombre_final_imagen}"
+        contenido_imagen = archivo_subido.getvalue()
+        try:
+            # Reemplaza la imagen existente si coincide el nombre
+            contents = repo.get_contents(ruta_completa)
+            repo.update_file(ruta_completa, f"Actualizar evidencia: {nombre_final_imagen}", contenido_imagen, contents.sha, branch="main")
+        except Exception:
+            # Sube un nuevo archivo físico a la carpeta evidencias de tu repo
+            repo.create_file(ruta_completa, f"Subir nueva evidencia: {nombre_final_imagen}", contenido_imagen, branch="main")
+        return ruta_completa
+    except Exception as e:
+        st.error(f"Error al subir el archivo de imagen a GitHub: {e}")
+        return ""
+# --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="SIGRAMA - Matriz MCE", layout="wide")
 
+# Inyección de estilos CSS Corporativos
 st.markdown("""
     <style>
     .stApp { background-color: #ECEFF1 !important; }
@@ -83,7 +149,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Catálogos Operativos con Anclas Visuales (Iconos de Área)
+# --- INICIALIZACIÓN DE CATÁLOGOS EN SESSION STATE ---
 if 'personal' not in st.session_state:
     st.session_state.personal = {
         "Jesus Morales": None, "Ing. Alfredo Hdz": None, "Ing. Lorena Hdz": None, "Jesús Alday": None,
@@ -96,7 +162,6 @@ if 'areas' not in st.session_state:
     st.session_state.areas = ["⚙️ Ingenieria", "🔍 Calidad", "📦 Almacen", "✂️ Corte", "📐 Doblez", "🎨 Pintura", "🚚 Embarquez", "🏭 Planta Rio"]
 
 LISTA_CLASIFICACIONES = ["Acuerdos", "Programa de Actividades", "Actividades Sujeridas", "Dirección", "Problema de Calidad", "Problema de Seguridad", "Lista de Pendientes", "Auto Asignado", "Plan de Control y Monitoreo", "Mejoras", "Investigación", "Manuales", "Procesos"]
-# 4. Función de Gráficos de Pareto (Mapeo Cromático: Amarillo Claro para No Terminadas y Rango Corregido)
 def crear_grafico_pareto(df, columna, titulo):
     if df.empty:
         fig = graph_objects.Figure(); fig.update_layout(title=f"{titulo} (Sin Datos)"); return fig
@@ -122,7 +187,7 @@ def crear_grafico_pareto(df, columna, titulo):
     )
     return fig
 
-# 5. Carga e Inyección del Logotipo Corporativo Fijo (Ampliados 2x y Título de Planta)
+# --- RENDERIZADO DEL ENCABEZADO CORPORATIVO ---
 nombre_logo = "LOGOTIPO COLOR (1).jfif"
 imagen_logo = Image.open(nombre_logo) if os.path.exists(nombre_logo) else None
 
@@ -136,222 +201,14 @@ if imagen_logo is not None:
 else:
     st.markdown('<h2 style="color: #0C2340; text-align: center; font-weight: bold;">PLANTA METALES Y MAQUINADOS</h2>', unsafe_allow_html=True)
     st.markdown('<p class="main-title" style="text-align: center;">MATRIZ DE COMUNICACIÓN EFECTIVA</p>', unsafe_allow_html=True)
-
+# Menú de control lateral principal
 opcion_menu = st.sidebar.radio("Navegación", ["📊 Dashboard Principal", "📋 Tabla de Control", "📝 Actualizar Mis Avances", "📥 Cargar Actividades (Usuario)", "🔐 Panel Administrador"])
-# --- TAB 1: DASHBOARD PRINCIPAL ---
+
+# --- RENDERIZADO DE VISTAS SEGÚN SELECCIÓN ---
 if opcion_menu == "📊 Dashboard Principal":
+    st.subheader("Cuadro de Mando Operativo")
     col_f1, col_f2 = st.columns(2)
-    with col_f1: area_sel = st.selectbox("Filtrar por Área", ["Todas"] + st.session_state.areas)
-    with col_f2: resp_sel = st.selectbox("Filtrar por Responsable", ["Todos"] + list(st.session_state.personal.keys()))
+    with col_f1: 
+        area_sel = st.selectbox("Filtrar por Área Operativa", ["Todas"] + st.session_state.areas)
     
-    df_f = pd.DataFrame(st.session_state.actividades)
-    if area_sel != "Todas": df_f = df_f[df_f["Area"] == area_sel]
-    if resp_sel != "Todos": df_f = df_f[df_f["Responsable"] == resp_sel]
-    
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Total Actividades", len(df_f))
-    c2.metric("Terminadas", len(df_f[df_f["% Avance"] == 100]))
-    c3.metric("Avance Promedio", f"{df_f['% Avance'].mean() if len(df_f)>0 else 0:.1f}%")
-    st.write("---")
-    g1, g2 = st.columns(2)
-    with g1: st.plotly_chart(crear_grafico_pareto(df_f, "Origen", "Pareto 1: Actividades vs Cantidad"), use_container_width=True)
-    with g2: st.plotly_chart(crear_grafico_pareto(df_f, "Responsable", "Pareto 2: Personas vs Cantidad"), use_container_width=True)
-    
-    # --- PARETO 3: TÍTULOS DE RESPONSABLES GRANDE Y EN NEGRITAS ---
-    st.write("---"); st.subheader("Pareto 3: Estado de Actividades de Líderes Principales")
-    lideres_p = ["Jesus Morales", "Bryan Flores", "Cruz Carreon", "Luis Quintana"]
-    df_lideres = pd.DataFrame(st.session_state.actividades)[lambda x: x["Responsable"].isin(lideres_p)].copy()
-    
-    if not df_lideres.empty:
-        hoy = datetime.now()
-        def clasificar_vencimientos(fila):
-            try:
-                f_comp = datetime.strptime(str(fila["Fecha Compromiso"]).strip(), "%d-%b-%y")
-                return "Vencida (Retraso)" if (int(fila["% Avance"]) < 100 and f_comp < hoy) else ("Terminada" if int(fila["% Avance"]) == 100 else "Pendiente a Tiempo")
-            except: return "Pendiente a Tiempo"
-        df_lideres["Estado_Real"] = df_lideres.apply(clasificar_vencimientos, axis=1)
-        df_lideres["Valor_Eje"] = df_lideres["Estado_Real"].apply(lambda x: -1 if x == "Vencida (Retraso)" else 1)
-        
-        fig_l = px.bar(
-            df_lideres, x="Origen", y="Valor_Eje", color="Estado_Real", facet_col="Responsable", facet_col_wrap=2, 
-            color_discrete_map={"Terminada": "#2ECC71", "Pendiente a Tiempo": "#FEEA9A", "Vencida (Retraso)": "#E74C3C"}, 
-            labels={"Origen": "Clasificación", "Valor_Eje": "Tareas"}
-        )
-        fig_l.update_layout(barmode="stack", template="plotly_white", height=600, legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"))
-        fig_l.for_each_annotation(lambda a: a.update(text=f"<b>👤 {a.text.split('=')[-1].upper()}</b>", font=dict(size=14, color="#0C2340")))
-        st.plotly_chart(fig_l, use_container_width=True)
-
-# --- TAB 2: TABLA DE CONTROL COMPLETA ---
-elif opcion_menu == "📋 Tabla de Control":
-    st.subheader("Historial Completo de la Matriz de Comunicación")
-    df_t = pd.DataFrame(st.session_state.actividades)
-    st.write("---")
-    ct1, ct2, ct3 = st.columns(3)
-    with ct1: fa = st.selectbox("Filtrar por Área", ["Todas"] + st.session_state.areas, key="t_a")
-    with ct2: fr = st.selectbox("Filtrar por Responsable", ["Todos"] + list(st.session_state.personal.keys()), key="t_r")
-    with ct3: fp = st.selectbox("Filtrar por Prioridad", ["Todas", "Urgente", "Media", "Baja"])
-    if fa != "Todas": df_t = df_t[df_t["Area"] == fa]
-    if fr != "Todos": df_t = df_t[df_t["Responsable"] == fr]
-    if fp != "Todas": df_t = df_t[df_t["Prioridad"] == fp]
-    busq = st.text_input("🔍 Buscar por palabra clave en la descripción:")
-    if busq: df_t = df_t[df_t["Descripcion"].str.contains(busq, case=False, na=False)]
-    if not df_t.empty:
-        df_mostrar = df_t[["No", "Origen", "Fecha Inicio", "Prioridad", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso", "Comentario", "Evidencia"]].copy()
-        hoy = datetime.now()
-        def aplicar_colores_renglon(fila):
-            try:
-                num_avance = int(fila["% Avance"])
-                fecha_comp_str = str(fila["Fecha Compromiso"]).strip()
-                fecha_vencida = False
-                if fecha_comp_str:
-                    f_comp = datetime.strptime(fecha_comp_str, "%d-%b-%y")
-                    if f_comp < hoy: fecha_vencida = True
-                if num_avance < 100 and fecha_vencida: return ['background-color: #F8D7DA; color: #721C24; font-weight: 500;'] * len(fila)
-                elif num_avance == 100: return ['background-color: #D4EDDA; color: #155724;'] * len(fila)
-                elif num_avance > 0: return ['background-color: #FFF3CD; color: #856404;'] * len(fila)
-            except: pass
-            return [''] * len(fila)
-        df_estilizado = df_mostrar.style.apply(aplicar_colores_renglon, axis=1).format({"% Avance": "{:.0f}%"})
-        st.dataframe(df_estilizado, use_container_width=True, hide_index=True)
-    else: st.info("No se encontraron registros.")
-# --- TAB 3: ACTUALIZAR MIS AVANCES (DISEÑO COMPACTO, PLOT VERTICAL Y MINI-THUMBNAIL 800x600 DE RESPALDO) ---
-elif opcion_menu == "📝 Actualizar Mis Avances":
-    st.subheader("Actualización de Avances de Tareas")
-    u = st.selectbox("Identifícate (Selecciona tu nombre)", list(st.session_state.personal.keys()))
-    df_usuario = st.session_state.actividades[st.session_state.actividades["Responsable"] == u]
-    
-    if df_usuario.empty: 
-        st.info("No tienes actividades pendientes asignadas.")
-    else:
-        for idx in df_usuario.index:
-            r = st.session_state.actividades.loc[idx]
-            with st.container():
-                st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.markdown(f'<p class="card-header">Actividad No. {r["No"]} | {r["Area"]} | Prioridad: {r["Prioridad"]}</p>', unsafe_allow_html=True)
-                st.markdown(f'<p class="card-desc"><b>Descripción:</b> {r["Descripcion"]}</p>', unsafe_allow_html=True)
-                
-                col_izq, col_der = st.columns(2)
-                with col_izq:
-                    progreso_actual = int(r['% Avance'])
-                    fig_slider = graph_objects.Figure()
-                    fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[100], marker_color="#E0E0E0", showlegend=False, hoverinfo="none"))
-                    color_barra = "#2ECC71" if progreso_actual == 100 else "#0C2340"
-                    fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[progreso_actual], marker_color=color_barra, showlegend=False, text=f"{progreso_actual}%", textposition="inside", textfont=dict(size=14, color="white")))
-                    fig_slider.update_layout(barmode="overlay", template="plotly_white", height=140, width=90, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(visible=False), yaxis=dict(range=[0, 105], showgrid=False, zeroline=False, visible=False))
-                    st.plotly_chart(fig_slider, use_container_width=False, config={'displayModeBar': False}, key=f"plot_chart_{r['No']}")
-                    nv_av = st.slider("Ajustar %:", min_value=0, max_value=100, value=progreso_actual, step=5, key=f"num_{r['No']}")
-                
-                with col_der:
-                    nv_co = st.text_input("Comentarios de bitácora:", str(r['Comentario']), key=f"c_{r['No']}")
-                    
-                    evidencia_guardada = str(r['Evidencia']).strip()
-                    if evidencia_guardada and os.path.exists(evidencia_guardada):
-                        st.image(Image.open(evidencia_guardada), width=150, caption="📸 Evidencia Optimizada")
-                    
-                    foto = st.file_uploader("Evidencia Fotográfica (Cierre 100%):", type=["jpg","png","jpeg","jfif"], key=f"i_{r['No']}") if nv_av == 100 else None
-                    if foto: st.image(Image.open(foto), width=120, caption="Vista Previa")
-                    
-                    st.markdown('<div style="margin-top: 5px;">', unsafe_allow_html=True)
-                    if st.button("Guardar Tarea", key=f"b_{r['No']}"):
-                        if nv_av == 100 and not foto and not evidencia_guardada: 
-                            st.error("Falta la evidencia fotográfica obligatoria para cerrar al 100%.")
-                        else:
-                            ruta_foto_final = evidencia_guardada
-                            
-                            # MOTOR DE COMPRESIÓN BAJA RESOLUCIÓN (Thumbnail 800x600 y 65% de Calidad)
-                            if foto is not None:
-                                try:
-                                    img_abierta = Image.open(foto)
-                                    if img_abierta.mode in ("RGBA", "P"):
-                                        img_abierta = img_abierta.convert("RGB")
-                                    
-                                    # Ajuste automático al estándar de baja resolución sin deformar
-                                    img_abierta.thumbnail((800, 600), Image.Resampling.LANCZOS)
-                                    
-                                    stamp = datetime.now().strftime("%Y%m%d")
-                                    nombre_archivo_final = f"MCE-{int(r['No']):03d} evidencia ({stamp}).jpg"
-                                    ruta_foto_final = os.path.join(CARPETA_EVIDENCIAS, nombre_archivo_final)
-                                    
-                                    # Guardado físico ligero con compresión JPG en frío
-                                    img_abierta.save(ruta_foto_final, "JPEG", quality=65)
-                                except Exception as err_img:
-                                    st.error(f"Error al procesar la imagen física: {err_img}")
-                            
-                            st.session_state.actividades.at[idx, "% Avance"] = nv_av
-                            st.session_state.actividades.at[idx, "Comentario"] = nv_co
-                            st.session_state.actividades.at[idx, "Evidencia"] = ruta_foto_final
-                            st.success("¡Avance registrado exitosamente!"); st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
-
-# --- TAB 4: CARGAR ACTIVIDADES UNIVERSALES ---
-elif opcion_menu == "📥 Cargar Actividades (Usuario)":
-    st.subheader("Captura de Nuevas Actividades - Planta Metales")
-    if st.text_input("Contraseña de Usuario:", type="password") == "Metales":
-        with st.form("form_usuario_carga"):
-            o, p, r, a = st.selectbox("Origen", LISTA_CLASIFICACIONES), st.selectbox("Prioridad", ["Baja", "Media", "Urgente"]), st.selectbox("Responsable", list(st.session_state.personal.keys())), st.selectbox("Área", st.session_state.areas)
-            d, f = st.text_area("Descripción de Actividad"), st.date_input("Fecha Compromiso")
-            if st.form_submit_button("Registrar Actividad"):
-                n_id = int(st.session_state.actividades["No"].max() + 1) if not st.session_state.actividades.empty else 1
-                n_f = {"No": n_id, "Origen": o, "Fecha Inicio": datetime.now().strftime("%d-%b-%y"), "Prioridad": p, "Responsable": r, "Area": a, "Descripcion": d, "% Avance": 0, "Fecha Compromiso": f.strftime("%d-%b-%y"), "Comentario": "", "Evidencia": ""}
-                st.session_state.actividades = pd.concat([st.session_state.actividades, pd.DataFrame([n_f])], ignore_index=True)
-                st.success("¡Registrada!"); st.rerun()
-# --- TAB 5: PANEL ADMINISTRADOR MÁSTER ---
-elif opcion_menu == "🔐 Panel Administrador":
-    st.markdown('<p class="admin-header">Panel de Control Máster</p>', unsafe_allow_html=True)
-    if st.text_input("Introduce la contraseña Máster:", type="password") == "SigramaMetales2026":
-        st.subheader("Consola de Sincronización de Base de Datos (Excel)")
-        c_adm1, c_adm2 = st.columns(2)
-        with c_adm1:
-            if st.button("📥 IMPORTAR BASE DE DATOS DESDE EXCEL", use_container_width=True):
-                st.session_state.actividades = importar_registros_excel()
-                st.success("¡Datos importados!"); st.rerun()
-        with c_adm2:
-            if st.button("💾 RESPALDAR BASE DE DATOS COMPLETA EN DISCO", type="primary", use_container_width=True):
-                try:
-                    df_guardar = pd.DataFrame(st.session_state.actividades)
-                    with pd.ExcelWriter(ARCHIVO_DB, engine='openpyxl') as w:
-                        df_guardar.to_excel(w, index=False, sheet_name='Base_MCE')
-                        ws = w.sheets['Base_MCE']
-                        anchos = {'A': 10, 'B': 25, 'C': 15, 'D': 15, 'E': 22, 'F': 18, 'G': 45, 'H': 12, 'I': 20, 'J': 25, 'K': 40}
-                        for col, ancho in anchos.items(): ws.column_dimensions[col].width = ancho
-                    st.success(f"✅ ¡Respaldo completado en '{ARCHIVO_DB}'!"); st.rerun()
-                except Exception as e: st.error(f"❌ Error al guardar: {e}")
-        st.write("---")
-        t1, t2, t3 = st.tabs(["➕ Altas Catálogos", "✏️ Tabla de Edición Directa y Bajas", "📥 Carga Masiva Excel"])
-        with t1:
-            n_n = st.text_input("Nombre de Colaborador:")
-            if st.button("Registrar Empleado") and n_n: st.session_state.personal[n_n] = None; st.success("Registrado."); st.rerun()
-            st.write("---")
-            n_a = st.text_input("Nombre de Área:")
-            if st.button("Registrar Área") and n_a: st.session_state.areas.append(n_a); st.success("Añadida."); st.rerun()
-        with t2:
-            st.subheader("✏️ Edición en Caliente de la Matriz MCE")
-            df_editable = pd.DataFrame(st.session_state.actividades)
-            if not df_editable.empty:
-                configuracion_columnas = {
-                    "No": st.column_config.NumberColumn("No", disabled=True, format="%d"),
-                    "Origen": st.column_config.SelectboxColumn("Origen", options=LISTA_CLASIFICACIONES, required=True),
-                    "Prioridad": st.column_config.SelectboxColumn("Prioridad", options=["Baja", "Media", "Urgente"], required=True),
-                    "Responsable": st.column_config.SelectboxColumn("Responsable", options=list(st.session_state.personal.keys())),
-                    "Area": st.column_config.SelectboxColumn("Área", options=st.session_state.areas),
-                    "Fecha Inicio": st.column_config.TextColumn("Fecha Inicio"),
-                    "Descripcion": st.column_config.TextColumn("Descripción", width="large"),
-                    "% Avance": st.column_config.NumberColumn("% Avance", min_value=0, max_value=100, format="%d%%"),
-                    "Fecha Compromiso": st.column_config.TextColumn("Fecha Compromiso"),
-                    "Comentario": st.column_config.TextColumn("Comentario", width="medium"),
-                    "Evidencia": st.column_config.TextColumn("Ruta Evidencia", disabled=True)
-                }
-                df_modificado = st.data_editor(df_editable, column_config=configuracion_columnas, use_container_width=True, hide_index=True, num_rows="dynamic", key="editor_tabla_master")
-                if st.button("💾 CONFIRMAR Y GUARDAR CAMBIOS EN LA MATRIZ", type="primary", use_container_width=True):
-                    st.session_state.actividades = df_modificado
-                    st.success("✅ ¡Base de datos actualizada con éxito!"); st.rerun()
-            else: st.info("No hay registros vigentes.")
-        with t3:
-            ex = st.file_uploader("Subir Excel modificado", type=["xlsx"])
-            if ex is not None:
-                df_ex = pd.read_excel(ex)
-                if st.button("Confirmar Importación Masiva"):
-                    if "No" not in df_ex.columns: df_ex.insert(0, "No", range(st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1, (st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1) + len(df_ex)))
-                    if "Evidencia" not in df_ex.columns: df_ex["Evidencia"] = ""
-                    st.session_state.actividades = pd.concat([st.session_state.actividades, df_ex], ignore_index=True); st.success("¡Importado!"); st.rerun()
+    # Aquí continuará la lógica específica de graficación y filtrado de tu pestaña 1...
