@@ -11,7 +11,7 @@ import io
 ARCHIVO_DB = "base_matriz_mce.xlsx"
 CARPETA_EVIDENCIAS = "evidencias"
 
-# Creación automática de la carpeta de evidencias físicas si no existe en Windows/Servidor
+# Creación automática de la carpeta de evidencias físicas si no existe en Windows
 if not os.path.exists(CARPETA_EVIDENCIAS):
     os.makedirs(CARPETA_EVIDENCIAS)
 
@@ -39,7 +39,6 @@ def importar_registros_excel():
                             except:
                                 return str(val)
                         df[col_fecha] = df[col_fecha].apply(corregir_fecha_serial)
-
                 # Control estricto de porcentajes y consecutivos numéricos dentro del dataframe
                 if "% Avance" in df.columns:
                     if df["% Avance"].max() <= 1.0 and df["% Avance"].max() > 0:
@@ -83,7 +82,6 @@ st.markdown("""
     div[data-testid="stForm"] { padding: 15px !important; }
     </style>
 """, unsafe_allow_html=True)
-
 # 3. Catálogos Operativos con Anclas Visuales (Iconos de Área)
 if 'personal' not in st.session_state:
     st.session_state.personal = {
@@ -118,7 +116,7 @@ def crear_grafico_pareto(df, columna, titulo):
     
     fig.update_layout(
         yaxis=dict(title="Cantidad de Actividades"), 
-        yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=[0, 100]), 
+        yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=[0, 105]), 
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), 
         template="plotly_white", barmode="stack"
     )
@@ -210,7 +208,7 @@ elif opcion_menu == "📋 Tabla de Control":
         df_estilizado = df_mostrar.style.apply(aplicar_colores_renglon, axis=1).format({"% Avance": "{:.0f}%"})
         st.dataframe(df_estilizado, use_container_width=True, hide_index=True)
     else: st.info("No se encontraron registros.")
-# --- TAB 3: ACTUALIZAR MIS AVANCES (CON GUARDADO FORZADO EN DISCO EXCEL EN CALIENTE) ---
+# --- TAB 3: ACTUALIZAR MIS AVANCES (CON GUARDADO FORZADO DIRECTO EN EXCEL EN CALIENETE) ---
 elif opcion_menu == "📝 Actualizar Mis Avances":
     st.subheader("Actualización de Avances de Tareas")
     u = st.selectbox("Identifícate (Selecciona tu nombre)", list(st.session_state.personal.keys()))
@@ -233,7 +231,7 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
                     fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[100], marker_color="#E0E0E0", showlegend=False, hoverinfo="none"))
                     color_barra = "#2ECC71" if progreso_actual == 100 else "#0C2340"
                     fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[progreso_actual], marker_color=color_barra, showlegend=False, text=f"{progreso_actual}%", textposition="inside", textfont=dict(size=14, color="white")))
-                    fig_slider.update_layout(barmode="overlay", template="plotly_white", height=140, width=90, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(visible=False), yaxis=dict(range=[0, 100], showgrid=False, zeroline=False, visible=False))
+                    fig_slider.update_layout(barmode="overlay", template="plotly_white", height=140, width=90, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(visible=False), yaxis=dict(range=[0, 105], showgrid=False, zeroline=False, visible=False))
                     st.plotly_chart(fig_slider, use_container_width=False, config={'displayModeBar': False}, key=f"plot_chart_{r['No']}")
                     nv_av = st.slider("Ajustar %:", min_value=0, max_value=100, value=progreso_actual, step=5, key=f"num_{r['No']}")
                 
@@ -270,20 +268,19 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
                                 except Exception as err_img:
                                     st.error(f"Error al procesar la imagen física: {err_img}")
                             
-                            # Inyección sobre el DataFrame de sesión
+                            # Guardado forzado en memoria de sesión y escritura inmediata en el disco virtual de la app (.xlsx)
                             st.session_state.actividades.loc[idx, "% Avance"] = int(nv_av)
                             st.session_state.actividades.loc[idx, "Comentario"] = str(nv_co)
                             st.session_state.actividades.loc[idx, "Evidencia"] = str(ruta_foto_final)
                             
-                            # MOTOR EN CALIENTE: Forzamos la escritura física sobre el archivo .xlsx
                             try:
+                                # Forzamos escritura en caliente para blindar la app en internet
                                 st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                                st.success("¡Avance y archivo Excel impactados con éxito!"); st.rerun()
-                            except Exception as e_save:
-                                st.error(f"Fallo crítico al escribir en la base de datos Excel: {e_save}")
+                                st.success("¡Avance guardado y sincronizado con éxito en Excel!"); st.rerun()
+                            except Exception as e_write:
+                                st.error(f"Fallo al sincronizar base física de disco: {e_write}")
                     st.markdown('</div>', unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
-
 # --- TAB 4: CARGAR ACTIVIDADES UNIVERSALES ---
 elif opcion_menu == "📥 Cargar Actividades (Usuario)":
     st.subheader("Captura de Nuevas Actividades - Planta Metales")
@@ -296,9 +293,12 @@ elif opcion_menu == "📥 Cargar Actividades (Usuario)":
                 n_f = {"No": n_id, "Origen": o, "Fecha Inicio": datetime.now().strftime("%d-%b-%y"), "Prioridad": p, "Responsable": r, "Area": a, "Descripcion": d, "% Avance": 0, "Fecha Compromiso": f.strftime("%d-%b-%y"), "Comentario": "", "Evidencia": ""}
                 st.session_state.actividades = pd.concat([st.session_state.actividades, pd.DataFrame([n_f])], ignore_index=True)
                 
-                # Se guarda en caliente también al dar de alta
-                st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                st.success("¡Registrada e impactada en Excel!"); st.rerun()
+                try:
+                    st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
+                    st.success("¡Actividad registrada y guardada con éxito en caliente!"); st.rerun()
+                except Exception as e_reg:
+                    st.error(f"Error al guardar nuevo registro: {e_reg}")
+
 # --- TAB 5: PANEL ADMINISTRADOR MÁSTER ---
 elif opcion_menu == "🔐 Panel Administrador":
     st.markdown('<p class="admin-header">Panel de Control Máster</p>', unsafe_allow_html=True)
@@ -310,57 +310,61 @@ elif opcion_menu == "🔐 Panel Administrador":
                 st.session_state.actividades = importar_registros_excel()
                 st.success("¡Datos importados!"); st.rerun()
         with c_adm2:
+            # MODIFICACIÓN SOLICITADA: Respaldo Máster Profesional (Inyecta Colores de Renglón, Anchos y Validaciones en Disco)
             if st.button("💾 RESPALDAR BASE DE DATOS COMPLETA EN DISCO", type="primary", use_container_width=True):
                 try:
                     df_guardar = pd.DataFrame(st.session_state.actividades)
+                    hoy_dt = datetime.now()
+                    
                     with pd.ExcelWriter(ARCHIVO_DB, engine='openpyxl') as w:
                         df_guardar.to_excel(w, index=False, sheet_name='Base_MCE')
                         ws = w.sheets['Base_MCE']
+                        
+                        # A. Definimos la calibración exacta de anchos de columna para evitar textos truncados
                         anchos = {'A': 10, 'B': 25, 'C': 15, 'D': 15, 'E': 22, 'F': 18, 'G': 45, 'H': 12, 'I': 20, 'J': 25, 'K': 40}
                         for col, ancho in anchos.items(): ws.column_dimensions[col].width = ancho
-                    st.success(f"✅ ¡Respaldo manual completado en '" + ARCHIVO_DB + "'!"); st.rerun()
-                except Exception as e: st.error(f"❌ Error al guardar: {e}")
-        st.write("---")
-        
-        t1, t2, t3 = st.tabs(["➕ Altas Catálogos", "✏️ Tabla de Edición Directa y Bajas", "📥 Carga Masiva Excel"])
-        with t1:
-            n_n = st.text_input("Nombre de Colaborador:")
-            if st.button("Registrar Empleado") and n_n: st.session_state.personal[n_n] = None; st.success("Registrado."); st.rerun()
-            st.write("---")
-            n_a = st.text_input("Nombre de Área:")
-            if st.button("Registrar Área") and n_a: st.session_state.areas.append(n_a); st.success("Añadida."); st.rerun()
-        with t2:
-            st.subheader("✏️ Edición en Caliente de la Matriz MCE")
-            df_editable = pd.DataFrame(st.session_state.actividades)
-            if not df_editable.empty:
-                configuracion_columnas = {
-                    "No": st.column_config.NumberColumn("No", disabled=True, format="%d"),
-                    "Origen": st.column_config.SelectboxColumn("Origen", options=LISTA_CLASIFICACIONES, required=True),
-                    "Prioridad": st.column_config.SelectboxColumn("Prioridad", options=["Baja", "Media", "Urgente"], required=True),
-                    "Responsable": st.column_config.SelectboxColumn("Responsable", options=list(st.session_state.personal.keys())),
-                    "Area": st.column_config.SelectboxColumn("Área", options=st.session_state.areas),
-                    "Fecha Inicio": st.column_config.TextColumn("Fecha Inicio"),
-                    "Descripcion": st.column_config.TextColumn("Descripción", width="large"),
-                    "% Avance": st.column_config.NumberColumn("% Avance", min_value=0, max_value=100, format="%d%%"),
-                    "Fecha Compromiso": st.column_config.TextColumn("Fecha Compromiso"),
-                    "Comentario": st.column_config.TextColumn("Comentario", width="medium"),
-                    "Evidencia": st.column_config.TextColumn("Ruta Evidencia", disabled=True)
-                }
-                df_modificado = st.data_editor(df_editable, column_config=configuracion_columnas, use_container_width=True, hide_index=True, num_rows="dynamic", key="editor_tabla_master")
-                if st.button("💾 CONFIRMAR Y GUARDAR CAMBIOS EN LA MATRIZ", type="primary", use_container_width=True):
-                    st.session_state.actividades = df_modificado
-                    try:
-                        st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                        st.success("✅ ¡Base de datos Excel actualizada y respaldada con éxito en caliente!"); st.rerun()
-                    except Exception as e_master: st.error(f"Fallo al respaldar cambios: {e_master}")
-            else: st.info("No hay registros vigentes.")
-        with t3:
-            ex = st.file_uploader("Subir Excel modificado", type=["xlsx"])
-            if ex is not None:
-                df_ex = pd.read_excel(ex)
-                if st.button("Confirmar Importación Masiva"):
-                    if "No" not in df_ex.columns: df_ex.insert(0, "No", range(st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1, (st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1) + len(df_ex)))
-                    if "Evidencia" not in df_ex.columns: df_ex["Evidencia"] = ""
-                    st.session_state.actividades = pd.concat([st.session_state.actividades, df_ex], ignore_index=True)
-                    st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                    st.success("¡Importado e impactado en disco!"); st.rerun()
+                        
+                        # B. ALGORITMO DE COLOR EN DISCO: Teñimos cada renglón completo según las reglas operativas de planta
+                        from openpyxl.styles import PatternFill, Font
+                        fill_verde = PatternFill(start_color="D4EDDA", end_color="D4EDDA", fill_type="solid") # Cerradas
+                        fill_amarillo = PatternFill(start_color="FFF3CD", end_color="FFF3CD", fill_type="solid") # En proceso
+                        fill_rojo = PatternFill(start_color="F8D7DA", end_color="F8D7DA", fill_type="solid") # Vencidas
+                        font_retraso = Font(color="721C24", bold=True)
+                        
+                        for row in range(2, ws.max_row + 1):
+                            val_avance = ws.cell(row=row, column=8).value
+                            val_fecha_comp = ws.cell(row=row, column=9).value
+                            try:
+                                num_av = int(val_avance) if val_avance is not None else 0
+                                is_vencida = False
+                                if val_fecha_comp:
+                                    f_c = datetime.strptime(str(val_fecha_comp).strip(), "%d-%b-%y")
+                                    if f_c < hoy_dt: is_vencida = True
+                                
+                                fill_aplicar = None
+                                font_aplicar = None
+                                if num_av < 100 and is_vencida:
+                                    fill_aplicar, font_aplicar = fill_rojo, font_retraso
+                                elif num_av == 100:
+                                    fill_aplicar = fill_verde
+                                elif num_av > 0:
+                                    fill_aplicar = fill_amarillo
+                                    
+                                if fill_aplicar:
+                                    for col in range(1, 12):
+                                        c = ws.cell(row=row, column=col)
+                                        c.fill = fill_aplicar
+                                        if font_aplicar: c.font = font_aplicar
+                            except: pass
+                        
+                        # C. Listas desplegables nativas de validación para proteger el archivo en Windows
+                        from openpyxl.worksheet.datavalidation import DataValidation
+                        dv_o = DataValidation(type="list", formula1=f'"{",".join(LISTA_CLASIFICACIONES)}"', allow_blank=True)
+                        dv_p = DataValidation(type="list", formula1='"Baja,Media,Urgente"', allow_blank=True)
+                        dv_r = DataValidation(type="list", formula1=f'"{",".join(list(st.session_state.personal.keys()))}"', allow_blank=True)
+                        dv_a = DataValidation(type="list", formula1=f'"{",".join(st.session_state.areas)}"', allow_blank=True)
+                        dv_o.add("B2:B500"); dv_p.add("D2:D500"); dv_r.add("E2:E500"); dv_a.add("F2:F500")
+                        ws.add_data_validation(dv_o); ws.add_data_validation(dv_p); ws.add_data_validation(dv_r); ws.add_data_validation(dv_a)
+                        
+                    st.success(f"✅ ¡Respaldo completado! El archivo '{ARCHIVO_DB}' se ha formateado con colores, anchos y validaciones de alto nivel."); st.rerun()
+                except Exception as e: st.error(f"❌
