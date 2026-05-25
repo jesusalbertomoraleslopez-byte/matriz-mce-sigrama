@@ -279,7 +279,7 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
 # --- TAB 4: CARGAR ACTIVIDADES UNIVERSALES ---
 elif opcion_menu == "📥 Cargar Actividades (Usuario)":
     st.subheader("Captura de Nuevas Actividades - Planta Metales")
-    if st.text_input("Contraseña de Usuario:", type="password") == "Metales":
+    if st.text_input("Contraseña de Usuario:", type="password", key="pwd_carga_usr") == "Metales":
         with st.form("form_usuario_carga"):
             o, p, r, a = st.selectbox("Origen", LISTA_CLASIFICACIONES), st.selectbox("Prioridad", ["Baja", "Media", "Urgente"]), st.selectbox("Responsable", list(st.session_state.personal.keys())), st.selectbox("Área", st.session_state.areas)
             d, f = st.text_area("Descripción de Actividad"), st.date_input("Fecha Compromiso")
@@ -294,18 +294,64 @@ elif opcion_menu == "📥 Cargar Actividades (Usuario)":
 
 # --- TAB 5: PANEL ADMINISTRADOR MÁSTER ---
 elif opcion_menu == "🔐 Panel Administrador":
-    st.markdown('<p class="admin-header">Panel de Control Máster</p>', unsafe_allow_html=True)
-    if st.text_input("Introduce la contraseña Máster:", type="password") == "SigramaMetales2026":
-        st.subheader("Consola de Sincronización de Base de Datos (Excel)")
+    st.markdown('<p class="admin-header" style="font-size:24px; font-weight:bold; color:#0C2340; margin-bottom:15px;">Panel de Control Máster</p>', unsafe_allow_html=True)
+    if st.text_input("Introduce la contraseña Máster:", type="password", key="pwd_admin_master") == "SigramaMetales2026":
+        st.success("Acceso Máster Autorizado")
         
-        # INTERFAZ SOBERANA DE EDICIÓN DIRECTA ESTILO EXCEL CON FORMATOS INTEGRADOS
+        # RESTAURACIÓN MÁSTER: Consola bidireccional con inyección nativa de desplegables y anchos
+        st.write("---")
+        st.markdown("### 📊 Consola de Sincronización de Base de Datos (Excel)")
+        c_adm1, c_adm2 = st.columns(2)
+        
+        with c_adm1:
+            st.info("🔄 Descarga o importa los registros más recientes directamente desde el archivo Excel físico en el servidor de la nube.")
+            if st.button("📥 IMPORTAR BASE DE DATOS DESDE EXCEL", use_container_width=True, key="btn_import_master"):
+                st.session_state.actividades = importar_registros_excel()
+                st.success("¡Base de datos importada y sincronizada en la pantalla!"); st.rerun()
+                
+        with c_adm2:
+            st.warning("💾 Guarda permanentemente todas las altas, modificaciones o bajas en tu archivo Excel físico con formatos y listas nativas.")
+            if st.button("💾 RESPALDAR BASE DE DATOS COMPLETA EN DISCO", type="primary", use_container_width=True, key="btn_backup_master"):
+                try:
+                    df_guardar = pd.DataFrame(st.session_state.actividades)
+                    with pd.ExcelWriter(ARCHIVO_DB, engine='openpyxl') as w:
+                        df_guardar.to_excel(w, index=False, sheet_name='Base_MCE')
+                        ws = w.sheets['Base_MCE']
+                        # Calibramos los anchos de columna institucionales
+                        anchos = {'A': 10, 'B': 25, 'C': 15, 'D': 15, 'E': 22, 'F': 18, 'G': 45, 'H': 12, 'I': 20, 'J': 25, 'K': 40}
+                        for col, ancho in anchos.items(): 
+                            ws.column_dimensions[col].width = ancho
+                        
+                        # Inyección de Listas Desplegables nativas dentro del archivo físico de Excel resultante
+                        from openpyxl.worksheet.datavalidation import DataValidation
+                        str_orígenes = f'"{",".join(LISTA_CLASIFICACIONES)}"'
+                        str_prioridades = '"Baja,Media,Urgente"'
+                        str_personal = f'"{",".join(list(st.session_state.personal.keys()))}"'
+                        str_areas = f'"{",".join(st.session_state.areas)}"'
+                        
+                        dv_o = DataValidation(type="list", formula1=str_orígenes, allow_blank=True)
+                        dv_p = DataValidation(type="list", formula1=str_prioridades, allow_blank=True)
+                        dv_r = DataValidation(type="list", formula1=str_personal, allow_blank=True)
+                        dv_a = DataValidation(type="list", formula1=str_areas, allow_blank=True)
+                        
+                        dv_o.add("B2:B1000"); dv_p.add("D2:D1000"); dv_r.add("E2:E1000"); dv_a.add("F2:F1000")
+                        ws.add_data_validation(dv_o); ws.add_data_validation(dv_p); ws.add_data_validation(dv_r); ws.add_data_validation(dv_a)
+                        
+                    st.success(f"✅ ¡Respaldo completado! Los datos y desplegables se congelaron físicamente en '{ARCHIVO_DB}'.")
+                except Exception as e: 
+                    st.error(f"❌ Error al guardar el archivo en disco: {e}")
+        st.write("---")
+        
+        # Pestañas inferiores de control operacional masivo
         t1, t2, t3 = st.tabs(["➕ Altas Catálogos", "✏️ Tabla de Edición Directa y Bajas", "📥 Carga Masiva Excel"])
         with t1:
             n_n = st.text_input("Nombre de Colaborador:")
-            if st.button("Registrar Empleado") and n_n: st.session_state.personal[n_n] = None; st.success("Registrado."); st.rerun()
+            if st.button("Registrar Empleado", key="btn_add_emp") and n_n: 
+                st.session_state.personal[n_n] = None; st.success("Registrado."); st.rerun()
             st.write("---")
             n_a = st.text_input("Nombre de Área:")
-            if st.button("Registrar Área") and n_a: st.session_state.areas.append(n_a); st.success("Añadida."); st.rerun()
+            if st.button("Registrar Área", key="btn_add_area") and n_a: 
+                st.session_state.areas.append(n_a); st.success("Añadida."); st.rerun()
         with t2:
             st.subheader("✏️ Edición en Caliente de la Matriz MCE")
             df_editable = pd.DataFrame(st.session_state.actividades)
@@ -325,24 +371,25 @@ elif opcion_menu == "🔐 Panel Administrador":
                 }
                 df_modificado = st.data_editor(df_editable, column_config=configuracion_columnas, use_container_width=True, hide_index=True, num_rows="dynamic", key="editor_tabla_master")
                 
-                # CORRECCIÓN DE PARÉNTESIS Y SINTAXIS: Exportación segura con openpyxl de doble vía
-                if st.button("💾 CONFIRMAR Y GUARDAR CAMBIOS EN LA MATRIZ", type="primary", use_container_width=True):
+                if st.button("💾 CONFIRMAR Y GUARDAR CAMBIOS EN LA MATRIZ", type="primary", use_container_width=True, key="btn_save_editor_master"):
                     st.session_state.actividades = df_modificado
                     try:
                         st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                        st.success("✅ ¡Base de datos actualizada con éxito!"); st.rerun()
+                        st.success("✅ ¡Base de datos actualizada con éxito en la memoria virtual!"); st.rerun()
                     except Exception as e_master: st.error(f"Fallo al respaldar cambios en disco: {e_master}")
             else: st.info("No hay registros vigentes.")
         with t3:
-            ex = st.file_uploader("Subir Excel modificado", type=["xlsx"])
+            st.subheader("Inyección de Datos por Reemplazo Completo")
+            ex = st.file_uploader("Subir Excel modificado desde tu PC:", type=["xlsx"], key="uploader_bulk_master")
             if ex is not None:
                 df_ex = pd.read_excel(ex)
-                if st.button("Confirmar Importación Masiva"):
-                    if "No" not in df_ex.columns: df_ex.insert(0, "No", range(st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1, (st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1) + len(df_ex)))
-                    if "Evidencia" not in df_ex.columns: df_ex["Evidencia"] = ""
+                if st.button("Confirmar Importación Masiva", key="btn_confirm_bulk"):
+                    if "No" not in df_ex.columns: 
+                        df_ex.insert(0, "No", range(st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1, (st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1) + len(df_ex)))
+                    if "Evidencia" not in df_ex.columns: 
+                        df_ex["Evidencia"] = ""
                     st.session_state.actividades = pd.concat([st.session_state.actividades, df_ex], ignore_index=True)
                     try:
                         st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                        st.success("¡Importado con éxito!"); st.rerun()
+                        st.success("¡Importado con éxito en la nube!"); st.rerun()
                     except Exception as e_bulk: st.error(f"Error al escribir base masiva: {e_bulk}")
-
