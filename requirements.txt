@@ -1,4 +1,5 @@
-PyGithub
-openpyxl
+streamlit
 pandas
 plotly
+openpyxl
+Pillow
