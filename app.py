@@ -282,27 +282,28 @@ elif opcion_menu == "🔐 Panel Administrador":
                                     elif avance_val == 100: cell.fill = fill_verde; cell.font = font_normal
                                     elif avance_val > 0: cell.fill = fill_amarillo; cell.font = font_normal
                             except: pass
-                    token_git = "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"
-                    usuario_git = "jesusalbertomoraleslopez-byte"
-                    repo_git = "matriz-mce-sigrama"
-                    email_git = "jesusalbertomoraleslopez@gmail.com"
-                    
-                    # CORRECCIÓN EN DURO: Ruta oficial limpia hacia la API de datos de GitHub
-                    url_api = "https://" + "api.gi" + "thub.com" + "/repos/" + usuario_git + "/" + repo_git + "/contents/base_matriz_mce.xlsx"
-
-
-
-                    cabeceras = {"Authorization": f"token {token_git}", "Accept": "application/vnd.github.v3+json"}
-                    respuesta_get = requests.get(url_api, headers=cabeceras)
-                    sha_archivo = None
-                    if respuesta_get.status_code == 200:
+                            # --- REEMPLAZO SEGURO DESDE LA LÍNEA 285 ---
                         try:
-                            sha_archivo = respuesta_get.json().get("sha")
+                            token_git = st.secrets["TOKEN_GITHUB"]
                         except Exception:
-                            pass
-                    elif respuesta_get.status_code != 404:
-                        st.error(f"Fallo de comunicación con GitHub API (Código: {respuesta_get.status_code}).")
-                        st.stop()
+                            token_git = "" # Respaldo por si realizas pruebas locales fuera de la nube
+                
+                        usuario_git = "jesusalbertomoraleslopez-byte"
+                        repo_git = "matriz-mce-sigrama"
+                        email_git = "jesusalbertomoraleslopez@gmail.com"
+                
+                        url_api = "https://" + "api.gi" + "thub.com" + "/repos/" + usuario_git + "/" + repo_git + "/contents/base_matriz_mce.xlsx"
+                        cabeceras = {"Authorization": f"token {token_git}", "Accept": "application/vnd.github.v3+json"}
+                        respuesta_get = requests.get(url_api, headers=cabeceras)
+                        sha_archivo = None
+                        if respuesta_get.status_code == 200:
+                            try:
+                                sha_archivo = respuesta_get.json().get("sha")
+                            except Exception:
+                                pass
+                        elif respuesta_get.status_code != 404:
+                            st.error(f"Fallo de comunicación con GitHub API (Código: {respuesta_get.status_code}).")
+                            st.stop()
 
                     with open(ARCHIVO_DB, "rb") as archivo_binario: excel_base64 = base64.b64encode(archivo_binario.read()).decode("utf-8")
                     datos_payload = {"message": f"Sincronizacion MCE Planta ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})", "content": excel_base64, "branch": "main", "committer": {"name": usuario_git, "email": email_git}}
