@@ -364,7 +364,7 @@ elif opcion_menu == "🔐 Panel Administrador":
                     # 6. Envío de Petición PUT API REST a los servidores de GitHub
                     respuesta_put = requests.put(url_api, headers=cabeceras, data=json.dumps(datos_payload))
                     
-                    # CORRECCIÓN DE SINTAXIS EVALUADA: Se valida si el código HTTP es creación exitosa o actualización
+                    # CORRECCIÓN DE SINTAXIS: Validamos explícitamente códigos HTTP de éxito (200 OK y 201 Created)
                     if respuesta_put.status_code in [200, 201]:
                         st.success(f"✅ ¡Éxito Absoluto! La base con {len(st.session_state.actividades)} registros fue inyectada de forma permanente en tu repositorio de GitHub.")
                         st.balloons(); st.rerun()
