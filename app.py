@@ -288,13 +288,21 @@ elif opcion_menu == "🔐 Panel Administrador":
                     email_git = "jesusalbertomoraleslopez@gmail.com"
                     
                     # CORRECCIÓN EN DURO: Ruta oficial limpia hacia la API de datos de GitHub
-                    url_api = f"https://github.com/jesusalbertomoraleslopez-byte/matriz-mce-sigrama.git"
+                    url_api = f"https://github.com/jesusalbertomoraleslopez-byte/matriz-mce-sigrama/contents/base_matriz_mce.xlsx"
 
-
-                    
+        
                     cabeceras = {"Authorization": f"token {token_git}", "Accept": "application/vnd.github.v3+json"}
                     respuesta_get = requests.get(url_api, headers=cabeceras)
-                    sha_archivo = respuesta_get.json().get("sha") if respuesta_get.status_code == 200 else None
+                    sha_archivo = None
+                    if respuesta_get.status_code == 200:
+                        try:
+                            sha_archivo = respuesta_get.json().get("sha")
+                        except Exception:
+                            pass
+                    elif respuesta_get.status_code != 404:
+                        st.error(f"Fallo de comunicación con GitHub API (Código: {respuesta_get.status_code}).")
+                        st.stop()
+
                     with open(ARCHIVO_DB, "rb") as archivo_binario: excel_base64 = base64.b64encode(archivo_binario.read()).decode("utf-8")
                     datos_payload = {"message": f"Sincronizacion MCE Planta ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})", "content": excel_base64, "branch": "main", "committer": {"name": usuario_git, "email": email_git}}
                     if sha_archivo: datos_payload["sha"] = sha_archivo
