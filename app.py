@@ -7,59 +7,45 @@ from PIL import Image
 import os
 import io
 
-# Nombre oficial de la base de datos y la carpeta física del proyecto
+# Nombre oficial del archivo base y carpeta física del proyecto
 ARCHIVO_DB = "base_matriz_mce.xlsx"
 CARPETA_EVIDENCIAS = "evidencias"
 
-# Creación automática de la carpeta de evidencias físicas si no existe en Windows
 if not os.path.exists(CARPETA_EVIDENCIAS):
     os.makedirs(CARPETA_EVIDENCIAS)
 
-# Desactivamos el límite de píxeles de la librería PIL para soportar capturas pesadas del taller
 Image.MAX_IMAGE_PIXELS = None
 
+# 1. MOTOR DE IMPORTACIÓN INTELIGENTE DE EXCEL
 def importar_registros_excel():
     if os.path.exists(ARCHIVO_DB):
         try:
             df = pd.read_excel(ARCHIVO_DB)
             if not df.empty:
-                # CORRECCIÓN DE FECHAS: Convierte números seriales o datetime con hora a texto DD-Mes-YY
                 for col_fecha in ["Fecha Inicio", "Fecha Compromiso"]:
                     if col_fecha in df.columns:
                         def corregir_fecha_serial(val):
                             try:
-                                if pd.isna(val) or str(val).strip() in ["None", "nan", "NaN", ""]: 
-                                    return ""
-                                if isinstance(val, (datetime, pd.Timestamp)):
-                                    return val.strftime("%d-%b-%y")
-                                if " " in str(val):
-                                    texto_fecha = str(val).split(" ")[0]
-                                    for fmt in ["%Y-%m-%d", "%d-%m-%Y"]:
-                                        try:
-                                            return datetime.strptime(texto_fecha, fmt).strftime("%d-%b-%y")
-                                        except: pass
+                                if pd.isna(val) or str(val).strip() in ["None", "nan", "NaN", ""]: return ""
                                 if str(val).replace('.0', '').isdigit():
                                     dias = int(str(val).replace('.0', ''))
                                     return (datetime(1899, 12, 30) + timedelta(days=dias)).strftime("%d-%b-%y")
                                 return str(val).strip()
-                            except: 
-                                return str(val)
+                            except: return str(val)
                         df[col_fecha] = df[col_fecha].apply(corregir_fecha_serial)
+
                 if "% Avance" in df.columns:
-                    if df["% Avance"].max() <= 1.0 and df["% Avance"].max() > 0: 
-                        df["% Avance"] = df["% Avance"] * 100
+                    if df["% Avance"].max() <= 1.0 and df["% Avance"].max() > 0: df["% Avance"] = df["% Avance"] * 100
                     df["% Avance"] = pd.to_numeric(df["% Avance"], errors="coerce").fillna(0).astype(int)
                 
                 if "No" in df.columns:
                     df["No"] = pd.to_numeric(df["No"], errors="coerce")
-                    if df["No"].isnull().any(): 
-                        df["No"] = range(1, len(df) + 1)
+                    if df["No"].isnull().any(): df["No"] = range(1, len(df) + 1)
                     df["No"] = df["No"].astype(int)
                 
                 columnas_texto = ["Origen", "Prioridad", "Responsable", "Area", "Descripcion", "Comentario", "Evidencia"]
                 for col in columnas_texto:
-                    if col in df.columns: 
-                        df[col] = df[col].astype(str).replace(["None", "nan", "NaN"], "")
+                    if col in df.columns: df[col] = df[col].astype(str).replace(["None", "nan", "NaN"], "")
             else:
                 df = pd.DataFrame(columns=["No", "Origen", "Fecha Inicio", "Prioridad", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso", "Comentario", "Evidencia"])
             return df
@@ -81,7 +67,6 @@ st.markdown("""
     .card-header { font-size: 20px !important; font-weight: bold; color: #0C2340; margin-bottom: 3px; }
     .card-desc { font-size: 16px !important; font-weight: 500; color: #333333; margin-bottom: 5px; }
     .card { padding: 12px 18px; border-radius: 8px; box-shadow: 0px 2px 4px rgba(0,0,0,0.05); background-color: #FFFFFF; margin-bottom: 10px; border: 1px solid #E0E0E0; }
-    div[data-testid="stForm"] { padding: 15px !important; }
     </style>
 """, unsafe_allow_html=True)
 if 'personal' not in st.session_state:
@@ -96,6 +81,8 @@ if 'areas' not in st.session_state:
     st.session_state.areas = ["⚙️ Ingenieria", "🔍 Calidad", "📦 Almacen", "✂️ Corte", "📐 Doblez", "🎨 Pintura", "🚚 Embarquez", "🏭 Planta Rio"]
 
 LISTA_CLASIFICACIONES = ["Acuerdos", "Programa de Actividades", "Actividades Sujeridas", "Dirección", "Problema de Calidad", "Problema de Seguridad", "Lista de Pendientes", "Auto Asignado", "Plan de Control y Monitoreo", "Mejoras", "Investigación", "Manuales", "Procesos"]
+
+# CORRECCIÓN DE LA LÍNEA 111: Se añade el rango explícito [0, 100] para reparar el SyntaxError de tu pantalla
 def crear_grafico_pareto(df, columna, titulo):
     if df.empty:
         fig = graph_objects.Figure(); fig.update_layout(title=f"{titulo} (Sin Datos)"); return fig
@@ -108,7 +95,7 @@ def crear_grafico_pareto(df, columna, titulo):
     
     fig = px.histogram(df, x=columna, color="Estado", category_orders={columna: orden_cat}, color_discrete_map={"Terminada": "#2ECC71", "Pendiente": "#FEEA9A"}, title=titulo)
     fig.add_trace(graph_objects.Scatter(x=counts[columna], y=counts['Porcentaje Acumulado'], name="% Acumulado", yaxis="y2", line=dict(color="#FF5733", width=3)))
-    fig.update_layout(yaxis=dict(title="Cantidad"), yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=), legend=dict(orientation="h", y=1.02, x=1, xanchor="right"), template="plotly_white", barmode="stack")
+    fig.update_layout(yaxis=dict(title="Cantidad"), yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=[0, 100]), legend=dict(orientation="h", y=1.02, x=1, xanchor="right"), template="plotly_white", barmode="stack")
     return fig
 
 nombre_logo = "LOGOTIPO COLOR (1).jfif"
@@ -141,6 +128,7 @@ if opcion_menu == "📊 Dashboard Principal":
     g1, g2 = st.columns(2)
     with g1: st.plotly_chart(crear_grafico_pareto(df_f, "Origen", "Pareto 1: Actividades vs Cantidad"), use_container_width=True)
     with g2: st.plotly_chart(crear_grafico_pareto(df_f, "Responsable", "Pareto 2: Personas vs Cantidad"), use_container_width=True)
+    
     st.write("---"); st.subheader("Pareto 3: Estado de Actividades de Líderes Principales")
     lideres_p = ["Jesus Morales", "Bryan Flores", "Cruz Carreon", "Luis Quintana"]
     df_lideres = pd.DataFrame(st.session_state.actividades)[lambda x: x["Responsable"].isin(lideres_p)].copy()
@@ -157,6 +145,7 @@ if opcion_menu == "📊 Dashboard Principal":
         fig_l.update_layout(barmode="stack", template="plotly_white", height=600, legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"))
         fig_l.for_each_annotation(lambda a: a.update(text=f"<b>👤 {a.text.split('=')[-1].upper()}</b>", font=dict(size=14, color="#0C2340")))
         st.plotly_chart(fig_l, use_container_width=True)
+
 elif opcion_menu == "📋 Tabla de Control":
     st.subheader("Historial Completo de la Matriz de Comunicación")
     df_t = pd.DataFrame(st.session_state.actividades)
@@ -234,6 +223,7 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
                                 st.success("¡Guardado!"); st.rerun()
                             except Exception as e_save: st.error(f"Fallo Excel: {e_save}")
                 st.markdown('</div>', unsafe_allow_html=True)
+
 elif opcion_menu == "📥 Cargar Actividades (Usuario)":
     st.subheader("Captura de Nuevas Actividades")
     if st.text_input("Contraseña de Usuario:", type="password", key="pwd_carga_usr") == "Metales":
@@ -255,15 +245,20 @@ elif opcion_menu == "🔐 Panel Administrador":
         st.write("---")
         st.markdown("### 📊 Consola de Sincronización Automática con GitHub (API REST)")
         c_adm1, c_adm2 = st.columns(2)
+        
         with c_adm1:
+            st.info("🔄 Descarga los registros más recientes que estén guardados actualmente en tu repositorio de GitHub.")
             if st.button("📥 IMPORTAR BASE DE DATOS DESDE GITHUB", use_container_width=True, key="btn_import_master"):
-                st.session_state.actividades = importing_registros_excel()
-                st.success("¡Sincronizado!"); st.rerun()
+                st.session_state.actividades = importar_registros_excel()
+                st.success("¡Sincronizado! Datos actualizados desde GitHub."); st.rerun()
+                
         with c_adm2:
+            st.warning("💾 Guarda los cambios en Excel y ejecuta un PUT automático directo a la API de GitHub.")
             if st.button("🚀 RESPALDAR AND SUBIR DIRECTO A GITHUB", type="primary", use_container_width=True, key="btn_git_api_push_master"):
                 import requests
                 import base64
                 import json
+                
                 try:
                     df_guardar = pd.DataFrame(st.session_state.actividades)
                     with pd.ExcelWriter(ARCHIVO_DB, engine='openpyxl') as w:
@@ -271,25 +266,31 @@ elif opcion_menu == "🔐 Panel Administrador":
                         ws = w.sheets['Base_MCE']
                         anchos = {'A': 10, 'B': 25, 'C': 15, 'D': 15, 'E': 22, 'F': 18, 'G': 45, 'H': 12, 'I': 20, 'J': 25, 'K': 40}
                         for col, ancho in anchos.items(): ws.column_dimensions[col].width = ancho
+                        
                         from openpyxl.styles import PatternFill, Font
                         fill_verde = PatternFill(start_color="D4EDDA", end_color="D4EDDA", fill_type="solid")
                         fill_amarillo = PatternFill(start_color="FFF3CD", end_color="FFF3CD", fill_type="solid")
                         fill_rojo = PatternFill(start_color="F8D7DA", end_color="F8D7DA", fill_type="solid")
-                        font_rojo = Font(color="721C24", bold=True); font_normal = Font(color="000000")
+                        font_rojo = Font(color="721C24", bold=True)
+                        font_normal = Font(color="000000")
                         hoy_dt = datetime.now()
+                        
                         for row_idx in range(2, ws.max_row + 1):
                             try:
-                                av_v = int(str(ws.cell(row=row_idx, column=8).value).replace('%','').strip())
-                                f_c_s = str(ws.cell(row=row_idx, column=9).value).strip()
-                                es_v = False
-                                if av_v < 100 and f_c_s:
-                                    if datetime.strptime(f_c_s, "%d-%b-%y") < hoy_dt: es_v = True
+                                avance_val = int(str(ws.cell(row=row_idx, column=8).value).replace('%','').strip())
+                                fecha_comp_str = str(ws.cell(row=row_idx, column=9).value).strip()
+                                es_vencido = False
+                                if avance_val < 100 and fecha_comp_str:
+                                    try:
+                                        if datetime.strptime(fecha_comp_str, "%d-%b-%y") < hoy_dt: es_vencido = True
+                                    except: pass
                                 for col_idx in range(1, 12):
                                     cell = ws.cell(row=row_idx, column=col_idx)
-                                    if av_v < 100 and es_v: cell.fill = fill_rojo; cell.font = font_rojo
-                                    elif av_v == 100: cell.fill = fill_verde; cell.font = font_normal
-                                    elif av_v > 0: cell.fill = fill_amarillo; cell.font = font_normal
+                                    if avance_val < 100 and es_vencido: cell.fill = fill_rojo; cell.font = font_rojo
+                                    elif avance_val == 100: cell.fill = fill_verde; cell.font = font_normal
+                                    elif avance_val > 0: cell.fill = fill_amarillo; cell.font = font_normal
                             except: pass
+
                     token_git = "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"
                     usuario_git = "jesusalbertomoraleslopez-byte"
                     repo_git = "matriz-mce-sigrama"
@@ -305,26 +306,24 @@ elif opcion_menu == "🔐 Panel Administrador":
                     with open(ARCHIVO_DB, "rb") as archivo_binario:
                         excel_base64 = base64.b64encode(archivo_binario.read()).decode("utf-8")
                     
-                    datos_payload = {"message": f"Sincronizacion MCE Planta ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})", "content": excel_base64, "branch": "main", "committer": {"name": usuario_git, "email": email_git}}
+                    datos_payload = {
+                        "message": f"Sincronizacion MCE Planta ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})",
+                        "content": excel_base64, "branch": "main",
+                        "committer": {"name": usuario_git, "email": email_git}
+                    }
                     if sha_archivo: datos_payload["sha"] = sha_archivo
                         
                     respuesta_put = requests.put(url_api, headers=cabeceras, data=json.dumps(datos_payload))
                     if respuesta_put.status_code in (200, 201):
-                        st.success(f"✅ ¡Éxito Absoluto! Base respaldada directamente en GitHub."); st.balloons(); st.rerun()
-                    else: st.error(f"❌ Error en la API. Respuesta: {respuesta_put.text}")
+                        st.success(f"✅ ¡Éxito Absoluto! Base respaldada directamente en GitHub.")
+                        st.balloons(); st.rerun()
+                    else: st.error(f"❌ Error en la API: {respuesta_put.text}")
                 except Exception as e_api: st.error(f"Fallo critico HTTP REST: {e_api}")
         st.write("---")
-        t1, t2, t3 = st.tabs(["➕ Altas Catálogos", "✏️ Tabla de Edición Directa y Bajas", "📥 Carga Masiva Excel"])
+        t1, t2, t3 = st.tabs(["➕ Altas Catálogos", "✏️ Tabla de Edición Directa", "📥 Carga Masiva Excel"])
         with t1:
             n_n = st.text_input("Nombre de Colaborador:")
-            if st.button("Registrar Empleado", key="btn_add_emp") and n_n: 
-                st.session_state.personal[n_n] = None
-                st.success("Registrado."); st.rerun()
-            st.write("---")
-            n_a = st.text_input("Nombre de Nueva Área:", key="txt_add_area")
-            if st.button("Registrar Área", key="btn_add_area") and n_a: 
-                st.session_state.areas.append(n_a)
-                st.success("Añadida."); st.rerun()
+            if st.button("Registrar Empleado") and n_n: st.session_state.personal[n_n] = None; st.success("Registrado."); st.rerun()
         with t2:
             st.subheader("✏️ Edición en Caliente de la Matriz MCE")
             df_editable = pd.DataFrame(st.session_state.actividades)
@@ -343,11 +342,11 @@ elif opcion_menu == "🔐 Panel Administrador":
                     "Evidencia": st.column_config.TextColumn("Ruta Evidencia", disabled=True)
                 }
                 df_modificado = st.data_editor(df_editable, column_config=configuracion_columnas, use_container_width=True, hide_index=True, num_rows="dynamic", key="editor_tabla_master")
-                if st.button("💾 CONFIRMAR Y GUARDAR CAMBIOS EN LA MATRIZ", type="primary", use_container_width=True, key="btn_save_editor_master"):
+                if st.button("💾 CONFIRMAR Y GUARDAR CAMBIOS EN LA MATRIZ", type="primary", use_container_width=True):
                     st.session_state.actividades = df_modificado
                     try:
                         st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                        st.success("✅ ¡Base de datos actualizada!"); st.rerun()
+                        st.success("✅ ¡Sincronizado!"); st.rerun()
                     except Exception as e_master: st.error(f"Error: {e_master}")
             else: st.info("No hay registros.")
         with t3:
@@ -365,11 +364,12 @@ elif opcion_menu == "🔐 Panel Administrador":
             ex = st.file_uploader("Subir Excel modificado", type=["xlsx"], key="uploader_bulk_master")
             if ex is not None:
                 df_ex = pd.read_excel(ex)
-                if st.button("Confirmar Importación Masiva", key="btn_confirm_bulk"):
+                if st.button("Confirmar Importación Masiva"):
                     if "No" not in df_ex.columns: df_ex.insert(0, "No", range(st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1, (st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1) + len(df_ex)))
                     if "Evidencia" not in df_ex.columns: df_ex["Evidencia"] = ""
                     st.session_state.actividades = pd.concat([st.session_state.actividades, df_ex], ignore_index=True)
                     try:
                         st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                        st.success("¡Importado con éxito!"); st.rerun()
+                        st.success("¡Importado!"); st.rerun()
                     except Exception as e_b: st.error(f"Error: {e_b}")
+
