@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -7,12 +6,15 @@ from datetime import datetime, timedelta
 from PIL import Image
 import os
 import io
+import requests
+import base64
+import json
 
 # Nombre oficial del archivo base y carpeta física del proyecto
 ARCHIVO_DB = "base_matriz_mce.xlsx"
 CARPETA_EVIDENCIAS = "evidencias"
 
-# Creación automática de la carpeta de evidencias físicas si no existe en Windows
+# Creación automática de la carpeta de evidencias físicas si no existe en Windows/Linux
 if not os.path.exists(CARPETA_EVIDENCIAS):
     os.makedirs(CARPETA_EVIDENCIAS)
 
@@ -52,17 +54,20 @@ def importar_registros_excel():
                         df[col_fecha] = df[col_fecha].apply(corregir_fecha_serial)
 
                 if "% Avance" in df.columns:
-                    if df["% Avance"].max() <= 1.0 and df["% Avance"].max() > 0: df["% Avance"] = df["% Avance"] * 100
+                    if df["% Avance"].max() <= 1.0 and df["% Avance"].max() > 0: 
+                        df["% Avance"] = df["% Avance"] * 100
                     df["% Avance"] = pd.to_numeric(df["% Avance"], errors="coerce").fillna(0).astype(int)
                 
                 if "No" in df.columns:
                     df["No"] = pd.to_numeric(df["No"], errors="coerce")
-                    if df["No"].isnull().any(): df["No"] = range(1, len(df) + 1)
+                    if df["No"].isnull().any(): 
+                        df["No"] = range(1, len(df) + 1)
                     df["No"] = df["No"].astype(int)
                 
                 columnas_texto = ["Origen", "Prioridad", "Responsable", "Area", "Descripcion", "Comentario", "Evidencia"]
                 for col in columnas_texto:
-                    if col in df.columns: df[col] = df[col].astype(str).replace(["None", "nan", "NaN"], "")
+                    if col in df.columns: 
+                        df[col] = df[col].astype(str).replace(["None", "nan", "NaN"], "")
             else:
                 df = pd.DataFrame(columns=["No", "Origen", "Fecha Inicio", "Prioridad", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso", "Comentario", "Evidencia"])
             return df
@@ -103,6 +108,7 @@ if 'areas' not in st.session_state:
     st.session_state.areas = ["⚙️ Ingenieria", "🔍 Calidad", "📦 Almacen", "✂️ Corte", "📐 Doblez", "🎨 Pintura", "🚚 Embarquez", "🏭 Planta Rio"]
 
 LISTA_CLASIFICACIONES = ["Acuerdos", "Programa de Actividades", "Actividades Sujeridas", "Dirección", "Problema de Calidad", "Problema de Seguridad", "Lista de Pendientes", "Auto Asignado", "Plan de Control y Monitoreo", "Mejoras", "Investigación", "Manuales", "Procesos"]
+
 # 4. Función de Gráficos de Pareto (Mapeo Cromático: Amarillo Claro para No Terminadas y Rango Corregido)
 def crear_grafico_pareto(df, columna, titulo):
     if df.empty:
@@ -116,7 +122,7 @@ def crear_grafico_pareto(df, columna, titulo):
     
     fig = px.histogram(df, x=columna, color="Estado", category_orders={columna: orden_cat}, color_discrete_map={"Terminada": "#2ECC71", "Pendiente": "#FEEA9A"}, title=titulo)
     fig.add_trace(graph_objects.Scatter(x=counts[columna], y=counts['Porcentaje Acumulado'], name="% Acumulado", yaxis="y2", line=dict(color="#FF5733", width=3)))
-    fig.update_layout(yaxis=dict(title="Cantidad de Actividades"), yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=[0, 105]), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), template="plotly_white", barmode="stack")
+    fig.update_layout(yaxis=dict(title="Cantidad"), yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=[0, 105]), legend=dict(orientation="h", y=1.02, x=1, xanchor="right"), template="plotly_white", barmode="stack")
     return fig
 
 # 5. Carga e Inyección del Logotipo Corporativo Fijo (Ampliados 2x y Título de Planta)
@@ -139,7 +145,6 @@ if opcion_menu == "📊 Dashboard Principal":
     col_f1, col_f2 = st.columns(2)
     with col_f1: area_sel = st.selectbox("Filtrar por Área", ["Todas"] + st.session_state.areas)
     with col_f2: resp_sel = st.selectbox("Filtrar por Responsable", ["Todos"] + list(st.session_state.personal.keys()))
-    
     df_f = pd.DataFrame(st.session_state.actividades)
     if area_sel != "Todas": df_f = df_f[df_f["Area"] == area_sel]
     if resp_sel != "Todos": df_f = df_f[df_f["Responsable"] == resp_sel]
@@ -156,21 +161,20 @@ if opcion_menu == "📊 Dashboard Principal":
     st.write("---"); st.subheader("Pareto 3: Estado de Actividades de Líderes Principales")
     lideres_p = ["Jesus Morales", "Bryan Flores", "Cruz Carreon", "Luis Quintana"]
     df_lideres = pd.DataFrame(st.session_state.actividades)[lambda x: x["Responsable"].isin(lideres_p)].copy()
-    
     if not df_lideres.empty:
         hoy = datetime.now()
-        def clasificar_vencimientos(fila):
+        def clasificar_vencimientos(f):
             try:
-                f_comp = datetime.strptime(str(fila["Fecha Compromiso"]).strip(), "%d-%b-%y")
-                return "Vencida (Retraso)" if (int(fila["% Avance"]) < 100 and f_comp < hoy) else ("Terminada" if int(fila["% Avance"]) == 100 else "Pendiente a Tiempo")
+                f_comp = datetime.strptime(str(f["Fecha Compromiso"]).strip(), "%d-%b-%y")
+                return "Vencida (Retraso)" if (int(f["% Avance"]) < 100 and f_comp < hoy) else ("Terminada" if int(f["% Avance"]) == 100 else "Pendiente a Tiempo")
             except: return "Pendiente a Tiempo"
         df_lideres["Estado_Real"] = df_lideres.apply(clasificar_vencimientos, axis=1)
         df_lideres["Valor_Eje"] = df_lideres["Estado_Real"].apply(lambda x: -1 if x == "Vencida (Retraso)" else 1)
-        
         fig_l = px.bar(df_lideres, x="Origen", y="Valor_Eje", color="Estado_Real", facet_col="Responsable", facet_col_wrap=2, color_discrete_map={"Terminada": "#2ECC71", "Pendiente a Tiempo": "#FEEA9A", "Vencida (Retraso)": "#E74C3C"}, labels={"Origen": "Clasificación", "Valor_Eje": "Tareas"})
         fig_l.update_layout(barmode="stack", template="plotly_white", height=600, legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"))
         fig_l.for_each_annotation(lambda a: a.update(text=f"<b>👤 {a.text.split('=')[-1].upper()}</b>", font=dict(size=14, color="#0C2340")))
         st.plotly_chart(fig_l, use_container_width=True)
+
 # --- TAB 2: TABLA DE CONTROL COMPLETA ---
 elif opcion_menu == "📋 Tabla de Control":
     st.subheader("Historial Completo de la Matriz de Comunicación")
@@ -203,66 +207,53 @@ elif opcion_menu == "📋 Tabla de Control":
             return [''] * len(fila)
         st.dataframe(df_mostrar.style.apply(aplicar_colores_renglon, axis=1).format({"% Avance": "{:.0f}%"}), use_container_width=True, hide_index=True)
     else: st.info("No se encontraron registros.")
-
 # --- TAB 3: ACTUALIZAR MIS AVANCES ---
 elif opcion_menu == "📝 Actualizar Mis Avances":
     st.subheader("Actualización de Avances de Tareas")
-    u = st.selectbox("Identifícate (Selecciona tu nombre)", list(st.session_state.personal.keys()))
+    u = st.selectbox("Identifícate", list(st.session_state.personal.keys()))
     df_usuario = st.session_state.actividades[st.session_state.actividades["Responsable"] == u]
-    
-    if df_usuario.empty: st.info("No tienes actividades pendientes asignadas.")
+    if df_usuario.empty: st.info("No tienes actividades pendientes.")
     else:
         for idx in df_usuario.index:
             r = st.session_state.actividades.loc[idx]
             with st.container():
                 st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.markdown(f'<p class="card-header">Actividad No. {r["No"]} | {r["Area"]} | Prioridad: {r["Prioridad"]}</p>', unsafe_allow_html=True)
+                st.markdown(f'<p class="card-header">Actividad No. {r["No"]} | {r["Area"]}</p>', unsafe_allow_html=True)
                 st.markdown(f'<p class="card-desc"><b>Descripción:</b> {r["Descripcion"]}</p>', unsafe_allow_html=True)
-                
                 col_izq, col_der = st.columns(2)
                 with col_izq:
                     progreso_actual = int(r['% Avance'])
                     fig_slider = graph_objects.Figure()
                     fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[100], marker_color="#E0E0E0", showlegend=False, hoverinfo="none"))
-                    fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[progreso_actual], marker_color="#2ECC71" if progreso_actual == 100 else "#0C2340", showlegend=False, text=f"{progreso_actual}%", textposition="inside", textfont=dict(size=14, color="white")))
-                    fig_slider.update_layout(barmode="overlay", template="plotly_white", height=140, width=90, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(visible=False), yaxis=dict(range=[0, 100], showgrid=False, zeroline=False, visible=False))
+                    fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[progreso_actual], marker_color="#2ECC71" if progreso_actual == 100 else "#0C2340", showlegend=False, text=f"{progreso_actual}%", textposition="inside"))
+                    fig_slider.update_layout(barmode="overlay", template="plotly_white", height=140, width=90, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(visible=False), yaxis=dict(range=[0, 100], visible=False))
                     st.plotly_chart(fig_slider, use_container_width=False, config={'displayModeBar': False}, key=f"plot_chart_{r['No']}")
                     nv_av = st.slider("Ajustar %:", min_value=0, max_value=100, value=progreso_actual, step=5, key=f"num_{r['No']}")
-                
                 with col_der:
                     nv_co = st.text_input("Comentarios de bitácora:", str(r['Comentario']), key=f"c_{r['No']}")
                     evidencia_guardada = str(r['Evidencia']).strip()
-                    if evidencia_guardada and os.path.exists(evidencia_guardada):
-                        st.image(Image.open(evidencia_guardada), width=150, caption="📸 Evidencia Optimizada")
-                    
-                    foto = st.file_uploader("Evidencia Fotográfica (Cierre 100%):", type=["jpg","png","jpeg","jfif"], key=f"i_{r['No']}") if nv_av == 100 else None
-                    if foto: st.image(Image.open(foto), width=120, caption="Vista Previa")
-                    
-                    st.markdown('<div style="margin-top: 5px;">', unsafe_allow_html=True)
+                    if evidencia_guardada and os.path.exists(evidencia_guardada): st.image(Image.open(evidencia_guardada), width=150)
+                    foto = st.file_uploader("Subir Evidencia (Cierre 100%):", type=["jpg","png","jpeg"], key=f"i_{r['No']}") if nv_av == 100 else None
                     if st.button("Guardar Tarea", key=f"b_{r['No']}"):
-                        if nv_av == 100 and not foto and not evidencia_guardada: st.error("Falta la evidencia fotográfica obligatoria.")
+                        if nv_av == 100 and not foto and not evidencia_guardada: st.error("Falta la foto.")
                         else:
                             ruta_foto_final = evidencia_guardada
                             if foto is not None:
                                 try:
-                                    img_abierta = Image.open(foto)
-                                    if img_abierta.mode in ("RGBA", "P"): img_abierta = img_abierta.convert("RGB")
-                                    img_abierta.thumbnail((800, 600), Image.Resampling.LANCZOS)
-                                    stamp = datetime.now().strftime("%Y%m%d")
-                                    ruta_foto_final = os.path.join(CARPETA_EVIDENCIAS, f"MCE-{int(r['No']):03d} evidencia ({stamp}).jpg")
-                                    img_abierta.save(ruta_foto_final, "JPEG", quality=65)
-                                except Exception as err_img: st.error(f"Error imagen: {err_img}")
-                            
+                                    img = Image.open(foto)
+                                    if img.mode in ("RGBA", "P"): img = img.convert("RGB")
+                                    img.thumbnail((800, 600), Image.Resampling.LANCZOS)
+                                    ruta_foto_final = os.path.join(CARPETA_EVIDENCIAS, f"MCE-{int(r['No']):03d}_evidencia.jpg")
+                                    img.save(ruta_foto_final, "JPEG", quality=65)
+                                except Exception as e_img: st.error(f"Error imagen: {e_img}")
                             st.session_state.actividades.loc[idx, "% Avance"] = int(nv_av)
                             st.session_state.actividades.loc[idx, "Comentario"] = str(nv_co)
                             st.session_state.actividades.loc[idx, "Evidencia"] = str(ruta_foto_final)
                             try:
                                 st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                                st.success("¡Avance registrado exitosamente!"); st.rerun()
-                            except Exception as e_save: st.error(f"Fallo al escribir en Excel: {e_save}")
-                    st.markdown('</div>', unsafe_allow_html=True)
+                                st.success("¡Guardado!"); st.rerun()
+                            except Exception as e_save: st.error(f"Fallo Excel: {e_save}")
                 st.markdown('</div>', unsafe_allow_html=True)
-
 # --- TAB 4: CARGAR ACTIVIDADES UNIVERSALES ---
 elif opcion_menu == "📥 Cargar Actividades (Usuario)":
     st.subheader("Captura de Nuevas Actividades - Planta Metales")
@@ -278,6 +269,7 @@ elif opcion_menu == "📥 Cargar Actividades (Usuario)":
                     st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
                     st.success("¡Registrada con éxito!"); st.rerun()
                 except Exception as e_add: st.error(f"Fallo al escribir en Excel: {e_add}")
+
 # --- TAB 5: PANEL ADMINISTRADOR MÁSTER ---
 elif opcion_menu == "🔐 Panel Administrador":
     st.markdown('<p class="admin-header" style="font-size:24px; font-weight:bold; color:#0C2340; margin-bottom:15px;">Panel de Control Máster</p>', unsafe_allow_html=True)
@@ -302,7 +294,7 @@ elif opcion_menu == "🔐 Panel Administrador":
                 import json
                 
                 try:
-                    # 1. Procesamiento local del archivo Excel con formatos, anchos y colores nativos
+                    # 1. Procesamiento local del archivo Excel con formatos, anchos y colores nativos [1]
                     df_guardar = pd.DataFrame(st.session_state.actividades)
                     with pd.ExcelWriter(ARCHIVO_DB, engine='openpyxl') as w:
                         df_guardar.to_excel(w, index=False, sheet_name='Base_MCE')
@@ -334,34 +326,35 @@ elif opcion_menu == "🔐 Panel Administrador":
                                     elif avance_val == 100: cell.fill = fill_verde; cell.font = font_normal
                                     elif avance_val > 0: cell.fill = fill_amarillo; cell.font = font_normal
                             except: pass
-                    # 2. CONFIGURACIÓN DIRECTA INYECTADA PARA EVITAR EL ERROR DE SECRETS
-                    token_git = "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"  # <-- REEMPLAZA CON TU TOKEN REAL VIGENTE
+
+                    # 2. MOTOR DE PETICIONES HTTP API REST BLINDADO CON FORMATO DE URL SEGURO [1]
+                    token_git = "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"
                     usuario_git = "jesusalbertomoraleslopez-byte"
                     repo_git = "matriz-mce-sigrama"
-                    email_git = "jesus.alberto.morales.lopez@gmail.com"     # <-- REEMPLAZA CON TU CORREO DE GITHUB
+                    email_git = "jesusalbertomoraleslopez@gmail.com"
                     
                     url_api = f"https://github.com{usuario_git}/{repo_git}/contents/{ARCHIVO_DB}"
+                    
                     cabeceras = {
                         "Authorization": f"token {token_git}",
                         "Accept": "application/vnd.github.v3+json"
                     }
                     
-                    # 3. Consultar el archivo actual en GitHub para extraer su identificador único SHA
+                    st.info("Sincronizando identificador único SHA con GitHub...")
                     respuesta_get = requests.get(url_api, headers=cabeceras)
+                    
                     sha_archivo = None
                     if respuesta_get.status_code == 200:
                         sha_archivo = respuesta_get.json().get("sha")
                     elif respuesta_get.status_code != 404:
-                        st.error(f"Fallo de conexión con GitHub API (Código: {respuesta_get.status_code}).")
+                        st.error(f"Fallo de comunicación (Código: {respuesta_get.status_code}).")
                         st.stop()
                     
-                    # 4. Conversión del archivo Excel a Base64
                     with open(ARCHIVO_DB, "rb") as archivo_binario:
                         excel_base64 = base64.b64encode(archivo_binario.read()).decode("utf-8")
                     
-                    # 5. Construcción del Payload JSON para la API de GitHub
                     datos_payload = {
-                        "message": f"Persistencia MCE: Sincronización automática de base de datos ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})",
+                        "message": f"Sincronización MCE Planta ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})",
                         "content": excel_base64,
                         "branch": "main",
                         "committer": {
@@ -372,15 +365,13 @@ elif opcion_menu == "🔐 Panel Administrador":
                     if sha_archivo:
                         datos_payload["sha"] = sha_archivo
                         
-                    # 6. Envío de Petición PUT API REST a los servidores de GitHub
                     respuesta_put = requests.put(url_api, headers=cabeceras, data=json.dumps(datos_payload))
                     
-                    # CORRECCIÓN DE SINTAXIS: Validación corregida de códigos de estatus de éxito exitosos
-                    if respuesta_put.status_code in [200, 201]:
-                        st.success(f"✅ ¡Éxito Absoluto! La base con {len(st.session_state.actividades)} registros fue inyectada de forma permanente en tu repositorio de GitHub.")
+                    if respuesta_put.status_code in (200, 201):
+                        st.success(f"✅ ¡Éxito Absoluto! Base de datos de {len(st.session_state.actividades)} registros inyectada directamente en GitHub.")
                         st.balloons(); st.rerun()
                     else:
-                        st.error(f"❌ Error al empujar archivo a GitHub. API Response: {respuesta_put.text}")
+                        st.error(f"❌ Error en la API. Respuesta: {respuesta_put.text}")
                 except Exception as error_global_api:
                     st.error(f"Fallo crítico en el motor HTTP REST: {error_global_api}")
         st.write("---")
@@ -439,3 +430,4 @@ elif opcion_menu == "🔐 Panel Administrador":
                         st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
                         st.success("¡Importado con éxito!"); st.rerun()
                     except Exception as e_b: st.error(f"Error: {e_b}")
+
