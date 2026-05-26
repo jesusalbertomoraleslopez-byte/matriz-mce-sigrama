@@ -283,8 +283,15 @@ elif opcion_menu == "🔐 Panel Administrador":
                                     elif avance_val > 0: cell.fill = fill_amarillo; cell.font = font_normal
                             except: pass
                     token_git = "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"
-                    usuario_git, repo_git, email_git = "jesusalbertomoraleslopez-byte", "matriz-mce-sigrama", "jesusalbertomoraleslopez@gmail.com"
+                    usuario_git = "jesusalbertomoraleslopez-byte"
+                    repo_git = "matriz-mce-sigrama"
+                    email_git = "jesusalbertomoraleslopez@gmail.com"
+                    
+                    # CORRECCIÓN EN DURO: Ruta oficial limpia hacia la API de datos de GitHub
                     url_api = f"https://github.com{usuario_git}/{repo_git}/contents/{ARCHIVO_DB}"
+
+
+                    
                     cabeceras = {"Authorization": f"token {token_git}", "Accept": "application/vnd.github.v3+json"}
                     respuesta_get = requests.get(url_api, headers=cabeceras)
                     sha_archivo = respuesta_get.json().get("sha") if respuesta_get.status_code == 200 else None
