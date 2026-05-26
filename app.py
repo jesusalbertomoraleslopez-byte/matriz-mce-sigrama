@@ -288,7 +288,7 @@ elif opcion_menu == "🔐 Panel Administrador":
                     email_git = "jesusalbertomoraleslopez@gmail.com"
                     
                     # CORRECCIÓN EN DURO: Ruta oficial limpia hacia la API de datos de GitHub
-                   url_api = "https://github.com/jesusalbertomoraleslopez-byte/matriz-mce-sigrama/base_matriz_mce.xlsx" 
+                   url_api = "https://github.com/jesusalbertomoraleslopez-byte/matriz-mce-sigrama.git/base_matriz_mce.xlsx" 
 
 
                     cabeceras = {"Authorization": f"token {token_git}", "Accept": "application/vnd.github.v3+json"}
