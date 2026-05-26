@@ -98,18 +98,22 @@ def crear_grafico_pareto(df, columna, titulo):
     fig.update_layout(yaxis=dict(title="Cantidad"), yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=[0, 100]), legend=dict(orientation="h", y=1.02, x=1, xanchor="right"), template="plotly_white", barmode="stack")
     return fig
 
+# 5. Carga e Inyección del Logotipo Corporativo Fijo (Ampliados 2x y Título de Planta Corregido)
 nombre_logo = "LOGOTIPO COLOR (1).jfif"
 imagen_logo = Image.open(nombre_logo) if os.path.exists(nombre_logo) else None
 
 if imagen_logo is not None:
-    col_logo_g, col_tit_g = st.columns()
-    with col_logo_g: st.image(imagen_logo, width=220) 
+    # CORRECCIÓN EN DURO: Se añade la proporción [1, 4] para estructurar las columnas de forma correcta
+    col_logo_g, col_tit_g = st.columns([1, 4])
+    with col_logo_g: 
+        st.image(imagen_logo, width=220) 
     with col_tit_g: 
         st.markdown('<h2 style="color: #0C2340; margin-bottom: 0px; padding-top: 10px; font-weight: bold;">PLANTA METALES Y MAQUINADOS</h2>', unsafe_allow_html=True)
         st.markdown('<p class="main-title">MATRIZ DE COMUNICACIÓN EFECTIVA</p>', unsafe_allow_html=True)
 else:
     st.markdown('<h2 style="color: #0C2340; text-align: center; font-weight: bold;">PLANTA METALES Y MAQUINADOS</h2>', unsafe_allow_html=True)
     st.markdown('<p class="main-title" style="text-align: center;">MATRIZ DE COMUNICACIÓN EFECTIVA</p>', unsafe_allow_html=True)
+
 
 opcion_menu = st.sidebar.radio("Navegación", ["📊 Dashboard Principal", "📋 Tabla de Control", "📝 Actualizar Mis Avances", "📥 Cargar Actividades (Usuario)", "🔐 Panel Administrador"])
 if opcion_menu == "📊 Dashboard Principal":
