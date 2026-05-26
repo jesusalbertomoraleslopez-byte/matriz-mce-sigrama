@@ -243,6 +243,7 @@ elif opcion_menu == "🔐 Panel Administrador":
     if st.text_input("Introduce la contraseña Máster:", type="password", key="pwd_admin_master") == "SigramaMetales2026":
         st.success("Acceso Máster Autorizado")
         st.write("---")
+        st.markdown("### 📊 Consola de Sincronización de Base de Datos (Excel)")
         c_adm1, c_adm2 = st.columns(2)
         with c_adm1:
             if st.button("📥 IMPORTAR BASE DE DATOS DESDE EXCEL", use_container_width=True, key="btn_import_master"):
@@ -290,10 +291,26 @@ elif opcion_menu == "🔐 Panel Administrador":
                     except Exception as e_master: st.error(f"Error: {e_master}")
             else: st.info("No hay registros.")
         with t3:
-            ex = st.file_uploader("Subir Excel modificado", type=["xlsx"])
+            st.subheader("Inyección de Datos por Carga Masiva")
+            
+            # REPARACIÓN: Re-introducción del motor generador de la plantilla oficial descargable
+            columnas_p = ["Origen", "Fecha Inicio", "Prioridad", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso", "Comentario"]
+            ej_g = pd.DataFrame([["Programa de Actividades", datetime.now().strftime("%d-%b-%y"), "Media", "Bryan Flores", "⚙️ Ingenieria", "Descripción...", 0, "15-Jun-26", "..."]], columns=columnas_p)
+            buf = io.BytesIO()
+            with pd.ExcelWriter(buf, engine='openpyxl') as w:
+                ej_g.to_excel(w, index=False, sheet_name='Plantilla')
+                ws = w.sheets['Plantilla']
+                anchos = {'A': 25, 'B': 15, 'C': 15, 'D': 22, 'E': 15, 'F': 45, 'G': 12, 'H': 20, 'I': 25}
+                for col, ancho in anchos.items(): ws.column_dimensions[col].width = ancho
+            
+            # Desplegamos el botón gris oficial de descarga
+            st.download_button(label="📥 Descargar Plantilla Oficial (.xlsx)", data=buf.getvalue(), file_name="Plantilla_MCE.xlsx", key="btn_download_template_master")
+            st.write("---")
+            
+            ex = st.file_uploader("Subir Excel modificado", type=["xlsx"], key="uploader_bulk_master")
             if ex is not None:
                 df_ex = pd.read_excel(ex)
-                if st.button("Confirmar Importación Masiva"):
+                if st.button("Confirmar Importación Masiva", key="btn_confirm_bulk"):
                     if "No" not in df_ex.columns: df_ex.insert(0, "No", range(st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1, (st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1) + len(df_ex)))
                     if "Evidencia" not in df_ex.columns: df_ex["Evidencia"] = ""
                     st.session_state.actividades = pd.concat([st.session_state.actividades, df_ex], ignore_index=True)
@@ -301,3 +318,4 @@ elif opcion_menu == "🔐 Panel Administrador":
                         st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
                         st.success("¡Importado!"); st.rerun()
                     except Exception as e_b: st.error(f"Error: {e_b}")
+
