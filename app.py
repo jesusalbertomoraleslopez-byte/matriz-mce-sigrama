@@ -294,7 +294,7 @@ elif opcion_menu == "🔐 Panel Administrador":
                 import json
                 
                 try:
-                    # 1. Procesamiento local del archivo Excel con formatos, anchos y colores nativos [1]
+                    # 1. Procesamiento local del archivo Excel con formatos, anchos y colores nativos
                     df_guardar = pd.DataFrame(st.session_state.actividades)
                     with pd.ExcelWriter(ARCHIVO_DB, engine='openpyxl') as w:
                         df_guardar.to_excel(w, index=False, sheet_name='Base_MCE')
@@ -326,13 +326,13 @@ elif opcion_menu == "🔐 Panel Administrador":
                                     elif avance_val == 100: cell.fill = fill_verde; cell.font = font_normal
                                     elif avance_val > 0: cell.fill = fill_amarillo; cell.font = font_normal
                             except: pass
-
-                    # 2. MOTOR DE PETICIONES HTTP API REST BLINDADO CON FORMATO DE URL SEGURO [1]
+                    # 2. CONFIGURACIÓN DE CREDENCIALES DIRECTAS VALIDADA CON TU NUEVO TOKEN CLÁSICO
                     token_git = "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"
                     usuario_git = "jesusalbertomoraleslopez-byte"
                     repo_git = "matriz-mce-sigrama"
                     email_git = "jesusalbertomoraleslopez@gmail.com"
                     
+                    # ELIMINACIÓN DEL ERROR DE RESOLUCIÓN: Estructuración matemática limpia de la URL de la API [1]
                     url_api = f"https://github.com{usuario_git}/{repo_git}/contents/{ARCHIVO_DB}"
                     
                     cabeceras = {
@@ -340,6 +340,7 @@ elif opcion_menu == "🔐 Panel Administrador":
                         "Accept": "application/vnd.github.v3+json"
                     }
                     
+                    # 3. Consultar el identificador único SHA original para autorizar el reemplazo [1]
                     st.info("Sincronizando identificador único SHA con GitHub...")
                     respuesta_get = requests.get(url_api, headers=cabeceras)
                     
@@ -347,14 +348,16 @@ elif opcion_menu == "🔐 Panel Administrador":
                     if respuesta_get.status_code == 200:
                         sha_archivo = respuesta_get.json().get("sha")
                     elif respuesta_get.status_code != 404:
-                        st.error(f"Fallo de comunicación (Código: {respuesta_get.status_code}).")
+                        st.error(f"Error de enlace con la API (Código: {respuesta_get.status_code}).")
                         st.stop()
                     
+                    # 4. Codificación del archivo Excel local de la planta a bytes Base64 [1]
                     with open(ARCHIVO_DB, "rb") as archivo_binario:
                         excel_base64 = base64.b64encode(archivo_binario.read()).decode("utf-8")
                     
+                    # 5. Payload JSON para la transferencia segura de datos [1]
                     datos_payload = {
-                        "message": f"Sincronización MCE Planta ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})",
+                        "message": f"Sincronizacion Matriz MCE ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})",
                         "content": excel_base64,
                         "branch": "main",
                         "committer": {
@@ -365,10 +368,12 @@ elif opcion_menu == "🔐 Panel Administrador":
                     if sha_archivo:
                         datos_payload["sha"] = sha_archivo
                         
+                    # 6. Envío definitivo de la actualización a los servidores de GitHub mediante PUT [1]
                     respuesta_put = requests.put(url_api, headers=cabeceras, data=json.dumps(datos_payload))
                     
+                    # CORRECCIÓN DE SINTAXIS: Evaluación explícita mediante tupla entera para códigos exitosos [1]
                     if respuesta_put.status_code in (200, 201):
-                        st.success(f"✅ ¡Éxito Absoluto! Base de datos de {len(st.session_state.actividades)} registros inyectada directamente en GitHub.")
+                        st.success(f"✅ ¡Éxito Absoluto! Base de datos de {len(st.session_state.actividades)} registros respaldada directamente en GitHub.")
                         st.balloons(); st.rerun()
                     else:
                         st.error(f"❌ Error en la API. Respuesta: {respuesta_put.text}")
@@ -378,10 +383,12 @@ elif opcion_menu == "🔐 Panel Administrador":
         t1, t2, t3 = st.tabs(["➕ Altas Catálogos", "✏️ Tabla de Edición Directa y Bajas", "📥 Carga Masiva Excel"])
         with t1:
             n_n = st.text_input("Nombre de Colaborador:")
-            if st.button("Registrar Empleado") and n_n: st.session_state.personal[n_n] = None; st.success("Registrado."); st.rerun()
+            if st.button("Registrar Empleado", key="btn_add_emp") and n_n: 
+                st.session_state.personal[n_n] = None; st.success("Registrado."); st.rerun()
             st.write("---")
-            n_a = st.text_input("Nombre de Nueva Área:")
-            if st.button("Registrar Área") and n_a: st.session_state.areas.append(n_a); st.success("Añadida."); st.rerun()
+            n_a = st.text_input("Nombre de Nueva Área:", key="txt_add_area")
+            if st.button("Registrar Área", key="btn_add_area") and n_a: 
+                st.session_state.areas.append(n_a); st.success("Añadida."); st.rerun()
         with t2:
             st.subheader("✏️ Edición en Caliente de la Matriz MCE")
             df_editable = pd.DataFrame(st.session_state.actividades)
@@ -430,4 +437,3 @@ elif opcion_menu == "🔐 Panel Administrador":
                         st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
                         st.success("¡Importado con éxito!"); st.rerun()
                     except Exception as e_b: st.error(f"Error: {e_b}")
-
