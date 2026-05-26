@@ -297,8 +297,11 @@ elif opcion_menu == "🔐 Panel Administrador":
                     usuario_git = "jesusalbertomoraleslopez-byte"
                     repo_git = "matriz-mce-sigrama"
                     email_git = "jesusalbertomoraleslopez@gmail.com"
-                    url_api = f"https://github.com{usuario_git}/{repo_git}/contents/{ARCHIVO_DB}"
-                    cabeceras = {"Authorization": f"token {token_git}", "Accept": "application/vnd.github.v3+json"}
+                    url_api = "https://github.com"
+                    cabeceras = {
+                        "Authorization": f"token {token_git}",
+                        "Accept": "application/vnd.github.v3+json"
+                    }
                     respuesta_get = requests.get(url_api, headers=cabeceras)
                     sha_archivo = respuesta_get.json().get("sha") if respuesta_get.status_code == 200 else None
                     with open(ARCHIVO_DB, "rb") as ab: excel_base64 = base64.b64encode(ab.read()).decode("utf-8")
