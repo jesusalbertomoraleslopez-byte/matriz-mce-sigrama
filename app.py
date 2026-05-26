@@ -17,24 +17,38 @@ if not os.path.exists(CARPETA_EVIDENCIAS):
 
 # Desactivamos el límite de píxeles de la librería PIL para soportar capturas pesadas del taller
 Image.MAX_IMAGE_PIXELS = None
+# 1. MOTOR DE IMPORTACIÓN INTELIGENTE (ELIMINA HORAS Y DEJA SOLO FECHA LIMPIA)
 def importar_registros_excel():
     if os.path.exists(ARCHIVO_DB):
         try:
             df = pd.read_excel(ARCHIVO_DB)
             if not df.empty:
-                # CORRECCIÓN DE FECHAS: Convierte números seriales de Excel a texto legible
+                # CORRECCIÓN DE FECHAS: Detecta formatos datetime extensos y los limpia a texto DD-Mes-YY
                 for col_fecha in ["Fecha Inicio", "Fecha Compromiso"]:
                     if col_fecha in df.columns:
                         def corregir_fecha_serial(val):
                             try:
-                                if pd.isna(val) or str(val).strip() in ["None", "nan", "NaN", ""]: return ""
+                                if pd.isna(val) or str(val).strip() in ["None", "nan", "NaN", ""]: 
+                                    return ""
+                                # Si viene como formato de fecha de Pandas/Python con hora, extraemos solo el componente fecha
+                                if isinstance(val, (datetime, pd.Timestamp)):
+                                    return val.strftime("%d-%b-%y")
+                                # Si viene como texto con hora extendida (ej: 2026-05-26 00:00:00)
+                                if " " in str(val):
+                                    texto_fecha = str(val).split(" ")[0]
+                                    for fmt in ["%Y-%m-%d", "%d-%m-%Y"]:
+                                        try:
+                                            return datetime.strptime(texto_fecha, fmt).strftime("%d-%b-%y")
+                                        except: pass
+                                # Si Excel lo lee como número entero serial
                                 if str(val).replace('.0', '').isdigit():
                                     dias = int(str(val).replace('.0', ''))
                                     return (datetime(1899, 12, 30) + timedelta(days=dias)).strftime("%d-%b-%y")
                                 return str(val).strip()
-                            except: return str(val)
+                            except: 
+                                return str(val)
                         df[col_fecha] = df[col_fecha].apply(corregir_fecha_serial)
-                # Control estricto de porcentajes y consecutivos numéricos dentro del dataframe
+
                 if "% Avance" in df.columns:
                     if df["% Avance"].max() <= 1.0 and df["% Avance"].max() > 0: df["% Avance"] = df["% Avance"] * 100
                     df["% Avance"] = pd.to_numeric(df["% Avance"], errors="coerce").fillna(0).astype(int)
@@ -238,84 +252,56 @@ elif opcion_menu == "📥 Cargar Actividades (Usuario)":
                     st.success("¡Registrada!"); st.rerun()
                 except Exception as e_add: st.error(f"Fallo Excel: {e_add}")
 
-elif opcion_menu == "🔐 Panel Administrador":
-    st.markdown('### Panel de Control Máster')
-    if st.text_input("Introduce la contraseña Máster:", type="password", key="pwd_admin_master") == "SigramaMetales2026":
-        st.success("Acceso Máster Autorizado")
-        st.write("---")
-        st.markdown("### 📊 Consola de Sincronización de Base de Datos (Excel)")
-        c_adm1, c_adm2 = st.columns(2)
-        with c_adm1:
-            if st.button("📥 IMPORTAR BASE DE DATOS DESDE EXCEL", use_container_width=True, key="btn_import_master"):
-                st.session_state.actividades = importar_registros_excel()
-                st.success("¡Sincronizado!"); st.rerun()
         with c_adm2:
-            if st.button("💾 RESPALDAR BASE DE DATOS COMPLETA EN DISCO", type="primary", use_container_width=True, key="btn_backup_master"):
+            if st.button("💾 RESPALDAR BASE DE DATOS COMPLETA EN GITHUB", type="primary", use_container_width=True, key="btn_backup_master"):
                 try:
                     df_guardar = pd.DataFrame(st.session_state.actividades)
                     with pd.ExcelWriter(ARCHIVO_DB, engine='openpyxl') as w:
                         df_guardar.to_excel(w, index=False, sheet_name='Base_MCE')
                         ws = w.sheets['Base_MCE']
+                        
+                        # 1. Ajuste automático de anchos de columna institucionales
                         anchos = {'A': 10, 'B': 25, 'C': 15, 'D': 15, 'E': 22, 'F': 18, 'G': 45, 'H': 12, 'I': 20, 'J': 25, 'K': 40}
-                        for col, ancho in anchos.items(): ws.column_dimensions[col].width = ancho
-                    st.success(f"✅ ¡Respaldo completado en '{ARCHIVO_DB}'!"); st.rerun()
-                except Exception as e: st.error(f"❌ Error al guardar: {e}")
-        st.write("---")
-        t1, t2, t3 = st.tabs(["➕ Altas Catálogos", "✏️ Tabla de Edición Directa", "📥 Carga Masiva Excel"])
-        with t1:
-            n_n = st.text_input("Nombre de Colaborador:")
-            if st.button("Registrar Empleado") and n_n: st.session_state.personal[n_n] = None; st.success("Registrado."); st.rerun()
-        with t2:
-            st.subheader("✏️ Edición en Caliente de la Matriz MCE")
-            df_editable = pd.DataFrame(st.session_state.actividades)
-            if not df_editable.empty:
-                configuracion_columnas = {
-                    "No": st.column_config.NumberColumn("No", disabled=True, format="%d"),
-                    "Origen": st.column_config.SelectboxColumn("Origen", options=LISTA_CLASIFICACIONES, required=True),
-                    "Prioridad": st.column_config.SelectboxColumn("Prioridad", options=["Baja", "Media", "Urgente"], required=True),
-                    "Responsable": st.column_config.SelectboxColumn("Responsable", options=list(st.session_state.personal.keys())),
-                    "Area": st.column_config.SelectboxColumn("Área", options=st.session_state.areas),
-                    "Fecha Inicio": st.column_config.TextColumn("Fecha Inicio"),
-                    "Descripcion": st.column_config.TextColumn("Descripción", width="large"),
-                    "% Avance": st.column_config.NumberColumn("% Avance", min_value=0, max_value=100, format="%d%%"),
-                    "Fecha Compromiso": st.column_config.TextColumn("Fecha Compromiso"),
-                    "Comentario": st.column_config.TextColumn("Comentario", width="medium"),
-                    "Evidencia": st.column_config.TextColumn("Ruta Evidencia", disabled=True)
-                }
-                df_modificado = st.data_editor(df_editable, column_config=configuracion_columnas, use_container_width=True, hide_index=True, num_rows="dynamic", key="editor_tabla_master")
-                if st.button("💾 CONFIRMAR Y GUARDAR CAMBIOS EN LA MATRIZ", type="primary", use_container_width=True):
-                    st.session_state.actividades = df_modificado
-                    try:
-                        st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                        st.success("✅ ¡Sincronizado!"); st.rerun()
-                    except Exception as e_master: st.error(f"Error: {e_master}")
-            else: st.info("No hay registros.")
-        with t3:
-            st.subheader("Inyección de Datos por Carga Masiva")
-            
-            # REPARACIÓN: Re-introducción del motor generador de la plantilla oficial descargable
-            columnas_p = ["Origen", "Fecha Inicio", "Prioridad", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso", "Comentario"]
-            ej_g = pd.DataFrame([["Programa de Actividades", datetime.now().strftime("%d-%b-%y"), "Media", "Bryan Flores", "⚙️ Ingenieria", "Descripción...", 0, "15-Jun-26", "..."]], columns=columnas_p)
-            buf = io.BytesIO()
-            with pd.ExcelWriter(buf, engine='openpyxl') as w:
-                ej_g.to_excel(w, index=False, sheet_name='Plantilla')
-                ws = w.sheets['Plantilla']
-                anchos = {'A': 25, 'B': 15, 'C': 15, 'D': 22, 'E': 15, 'F': 45, 'G': 12, 'H': 20, 'I': 25}
-                for col, ancho in anchos.items(): ws.column_dimensions[col].width = ancho
-            
-            # Desplegamos el botón gris oficial de descarga
-            st.download_button(label="📥 Descargar Plantilla Oficial (.xlsx)", data=buf.getvalue(), file_name="Plantilla_MCE.xlsx", key="btn_download_template_master")
-            st.write("---")
-            
-            ex = st.file_uploader("Subir Excel modificado", type=["xlsx"], key="uploader_bulk_master")
-            if ex is not None:
-                df_ex = pd.read_excel(ex)
-                if st.button("Confirmar Importación Masiva", key="btn_confirm_bulk"):
-                    if "No" not in df_ex.columns: df_ex.insert(0, "No", range(st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1, (st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1) + len(df_ex)))
-                    if "Evidencia" not in df_ex.columns: df_ex["Evidencia"] = ""
-                    st.session_state.actividades = pd.concat([st.session_state.actividades, df_ex], ignore_index=True)
-                    try:
-                        st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                        st.success("¡Importado!"); st.rerun()
-                    except Exception as e_b: st.error(f"Error: {e_b}")
+                        for col, ancho in anchos.items(): 
+                            ws.column_dimensions[col].width = ancho
+                        
+                        # 2. Inyección de formato condicional nativo en el archivo Excel (Verde, Amarillo y Rojo)
+                        from openpyxl.styles import PatternFill, Font
+                        fill_verde = PatternFill(start_color="D4EDDA", end_color="D4EDDA", fill_type="solid")
+                        fill_amarillo = PatternFill(start_color="FFF3CD", end_color="FFF3CD", fill_type="solid")
+                        fill_rojo = PatternFill(start_color="F8D7DA", end_color="F8D7DA", fill_type="solid")
+                        
+                        font_rojo = Font(color="721C24", bold=True)
+                        font_normal = Font(color="000000")
+                        
+                        hoy_dt = datetime.now()
+                        
+                        # Evaluamos celda por celda para pintar los renglones directamente en el archivo descargable
+                        for row_idx in range(2, ws.max_row + 1):
+                            try:
+                                avance_val = int(str(ws.cell(row=row_idx, column=8).value).replace('%','').strip())
+                                fecha_comp_str = str(ws.cell(row=row_idx, column=9).value).strip()
+                                
+                                es_vencido = False
+                                if avance_val < 100 and fecha_comp_str:
+                                    try:
+                                        f_comp = datetime.strptime(fecha_comp_str, "%d-%b-%y")
+                                        if f_comp < hoy_dt: es_vencido = True
+                                    except: pass
+                                
+                                # Aplicamos los estilos correspondientes a todo el renglón del Excel físico
+                                for col_idx in range(1, 12):
+                                    cell = ws.cell(row=row_idx, column=col_idx)
+                                    if avance_val < 100 and es_vencido:
+                                        cell.fill = fill_rojo; cell.font = font_rojo
+                                    elif avance_val == 100:
+                                        cell.fill = fill_verde; cell.font = font_normal
+                                    elif avance_val > 0:
+                                        cell.fill = fill_amarillo; cell.font = font_normal
+                            except: pass
+                            
+                    st.success(f"✅ ¡Respaldo completado! Base sincronizada con colores, anchos y fechas limpias.")
+                    st.rerun()
+                except Exception as e: st.error(f"❌ Error al guardar en la nube: {e}")
+
 
