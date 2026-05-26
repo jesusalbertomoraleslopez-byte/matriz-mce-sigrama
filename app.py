@@ -82,7 +82,6 @@ st.markdown("""
     div[data-testid="stForm"] { padding: 15px !important; }
     </style>
 """, unsafe_allow_html=True)
-
 # 3. Catálogos Operativos con Anclas Visuales (Iconos de Área)
 if 'personal' not in st.session_state:
     st.session_state.personal = {
@@ -157,7 +156,7 @@ if opcion_menu == "📊 Dashboard Principal":
     g1, g2 = st.columns(2)
     with g1: st.plotly_chart(crear_grafico_pareto(df_f, "Origen", "Pareto 1: Actividades vs Cantidad"), use_container_width=True)
     with g2: st.plotly_chart(crear_grafico_pareto(df_f, "Responsable", "Pareto 2: Personas vs Cantidad"), use_container_width=True)
-    
+    # --- PARETO 3: TÍTULOS DE RESPONSABLES GRANDE Y EN NEGRITAS ---
     st.write("---"); st.subheader("Pareto 3: Estado de Actividades de Líderes Principales")
     lideres_p = ["Jesus Morales", "Bryan Flores", "Cruz Carreon", "Luis Quintana"]
     df_lideres = pd.DataFrame(st.session_state.actividades)[lambda x: x["Responsable"].isin(lideres_p)].copy()
@@ -180,6 +179,7 @@ if opcion_menu == "📊 Dashboard Principal":
         fig_l.update_layout(barmode="stack", template="plotly_white", height=600, legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"))
         fig_l.for_each_annotation(lambda a: a.update(text=f"<b>👤 {a.text.split('=')[-1].upper()}</b>", font=dict(size=14, color="#0C2340")))
         st.plotly_chart(fig_l, use_container_width=True)
+
 # --- TAB 2: TABLA DE CONTROL COMPLETA ---
 elif opcion_menu == "📋 Tabla de Control":
     st.subheader("Historial Completo de la Matriz de Comunicación")
@@ -213,7 +213,7 @@ elif opcion_menu == "📋 Tabla de Control":
         df_estilizado = df_mostrar.style.apply(aplicar_colores_renglon, axis=1).format({"% Avance": "{:.0f}%"})
         st.dataframe(df_estilizado, use_container_width=True, hide_index=True)
     else: st.info("No se encontraron registros.")
-# --- TAB 3: ACTUALIZAR MIS AVANCES (CON FIX DE MUTACIÓN DIRECTA EN DATA FRAME .LOC Y EXPORT EN CALIENTE) ---
+# --- TAB 3: ACTUALIZAR MIS AVANCES (CON FIX DE MUTACIÓN DIRECTA EN DATA FRAME .LOC) ---
 elif opcion_menu == "📝 Actualizar Mis Avances":
     st.subheader("Actualización de Avances de Tareas")
     u = st.selectbox("Identifícate (Selecciona tu nombre)", list(st.session_state.personal.keys()))
@@ -269,14 +269,12 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
                             st.session_state.actividades.loc[idx, "% Avance"] = int(nv_av)
                             st.session_state.actividades.loc[idx, "Comentario"] = str(nv_co)
                             st.session_state.actividades.loc[idx, "Evidencia"] = str(ruta_foto_final)
-                            
                             try:
                                 st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                                st.success("¡Avance registrado exitosamente en caliente!"); st.rerun()
+                                st.success("¡Avance registrado exitosamente!"); st.rerun()
                             except Exception as e_save: st.error(f"Fallo al escribir en Excel: {e_save}")
                     st.markdown('</div>', unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
-
 # --- TAB 4: CARGAR ACTIVIDADES UNIVERSALES ---
 elif opcion_menu == "📥 Cargar Actividades (Usuario)":
     st.subheader("Captura de Nuevas Actividades - Planta Metales")
@@ -297,17 +295,14 @@ elif opcion_menu == "🔐 Panel Administrador":
     st.markdown('<p class="admin-header" style="font-size:24px; font-weight:bold; color:#0C2340; margin-bottom:15px;">Panel de Control Máster</p>', unsafe_allow_html=True)
     if st.text_input("Introduce la contraseña Máster:", type="password", key="pwd_admin_master") == "SigramaMetales2026":
         st.success("Acceso Máster Autorizado")
-        
         st.write("---")
         st.markdown("### 📊 Consola de Sincronización Automática Bidireccional (Streamlit 🔄 GitHub)")
         c_adm1, c_adm2 = st.columns(2)
-        
         with c_adm1:
             st.info("🔄 Descarga los registros más recientes que estén guardados actualmente en tu repositorio de GitHub.")
             if st.button("📥 IMPORTAR BASE DE DATOS DESDE GITHUB", use_container_width=True, key="btn_import_master"):
                 st.session_state.actividades = importar_registros_excel()
                 st.success("¡Sincronizado! Datos actualizados desde GitHub."); st.rerun()
-                
         with c_adm2:
             st.warning("💾 Guarda los cambios en Excel y ejecuta un GIT PUSH automático directo a tu cuenta de GitHub.")
             if st.button("💾 RESPALDAR Y CONFIRMAR CAMBIOS EN GITHUB", type="primary", use_container_width=True, key="btn_backup_master"):
@@ -315,52 +310,26 @@ elif opcion_menu == "🔐 Panel Administrador":
                     df_guardar = pd.DataFrame(st.session_state.actividades)
                     with pd.ExcelWriter(ARCHIVO_DB, engine='openpyxl') as w:
                         df_guardar.to_excel(w, index=False, sheet_name='Base_MCE')
-                        ws = w.sheets['Base_MCE']
-                        anchos = {'A': 10, 'B': 25, 'C': 15, 'D': 15, 'E': 22, 'F': 18, 'G': 45, 'H': 12, 'I': 20, 'J': 25, 'K': 40}
-                        for col, ancho in anchos.items(): 
-                            ws.column_dimensions[col].width = ancho
-                        
-                        from openpyxl.worksheet.datavalidation import DataValidation
-                        str_orígenes = f'"{",".join(LISTA_CLASIFICACIONES)}"'
-                        str_prioridades = '"Baja,Media,Urgente"'
-                        str_personal = f'"{",".join(list(st.session_state.personal.keys()))}"'
-                        str_areas = f'"{",".join(st.session_state.areas)}"'
-                        
-                        dv_o = DataValidation(type="list", formula1=str_orígenes, allow_blank=True)
-                        dv_p = DataValidation(type="list", formula1=str_prioridades, allow_blank=True)
-                        dv_r = DataValidation(type="list", formula1=str_personal, allow_blank=True)
-                        dv_a = DataValidation(type="list", formula1=str_areas, allow_blank=True)
-                        
-                        dv_o.add("B2:B1000"); dv_p.add("D2:D1000"); dv_r.add("E2:E1000"); dv_a.add("F2:F1000")
-                        ws.add_data_validation(dv_o); ws.add_data_validation(dv_p); ws.add_data_validation(dv_r); ws.add_data_validation(dv_a)
-                    
-                    # MOTOR AUTOMÁTICO DE CONEXIÓN ROBÓTICA A GITHUB VIA CONSOLA
                     git_token = st.secrets["github"]["token"]
                     git_user = st.secrets["github"]["usuario"]
                     git_repo = st.secrets["github"]["repo"]
                     git_email = st.secrets["github"]["email"]
-                    
                     os.system(f'git config --global user.email "{git_email}"')
                     os.system(f'git config --global user.name "{git_user}"')
                     os.system(f'git add {ARCHIVO_DB}')
-                    os.system('git commit -m "Persistence Automation: Sincronización forzada de Excel MCE en caliente"')
+                    os.system('git commit -m "Persistence Fix: Actualizacion automatica de registros MCE"')
                     os.system(f'git push https://{git_user}:{git_token}@://github.com{git_user}/{git_repo}.git main')
-                    
-                    st.success(f"✅ ¡Éxito Absoluto! Los {len(df_guardar)} registros se guardaron en Excel y se empujaron automáticamente a tu cuenta en GitHub.")
+                    st.success(f"✅ ¡Éxito! Registros empujados automáticamente a tu archivo en GitHub.")
                     st.rerun()
-                except Exception as e: 
-                    st.error(f"❌ Error en la sincronización robótica: {e}")
-                    
+                except Exception as e: st.error(f"❌ Error en la sincronización robótica: {e}")
         st.write("---")
         t1, t2, t3 = st.tabs(["➕ Altas Catálogos", "✏️ Tabla de Edición Directa y Bajas", "📥 Carga Masiva Excel"])
         with t1:
             n_n = st.text_input("Nombre de Colaborador:")
-            if st.button("Registrar Empleado", key="btn_add_emp") and n_n: 
-                st.session_state.personal[n_n] = None; st.success("Registrado."); st.rerun()
+            if st.button("Registrar Empleado", key="btn_add_emp") and n_n: st.session_state.personal[n_n] = None; st.success("Registrado."); st.rerun()
             st.write("---")
             n_a = st.text_input("Nombre de Área:")
-            if st.button("Registrar Área", key="btn_add_area") and n_a: 
-                st.session_state.areas.append(n_a); st.success("Añadida."); st.rerun()
+            if st.button("Registrar Área", key="btn_add_area") and n_a: st.session_state.areas.append(n_a); st.success("Añadida."); st.rerun()
         with t2:
             st.subheader("✏️ Edición en Caliente de la Matriz MCE")
             df_editable = pd.DataFrame(st.session_state.actividades)
@@ -374,4 +343,21 @@ elif opcion_menu == "🔐 Panel Administrador":
                     "Fecha Inicio": st.column_config.TextColumn("Fecha Inicio"),
                     "Descripcion": st.column_config.TextColumn("Descripción", width="large"),
                     "% Avance": st.column_config.NumberColumn("% Avance", min_value=0, max_value=100, format="%d%%"),
-                    "
+                    "Fecha Compromiso": st.column_config.TextColumn("Fecha Compromiso"),
+                    "Comentario": st.column_config.TextColumn("Comentario", width="medium"),
+                    "Evidencia": st.column_config.TextColumn("Ruta Evidencia", disabled=True)
+                }
+                df_modificado = st.data_editor(df_editable, column_config=configuracion_columnas, use_container_width=True, hide_index=True, num_rows="dynamic", key="editor_tabla_master")
+                if st.button("💾 CONFIRMAR Y GUARDAR CAMBIOS EN LA MATRIZ", type="primary", use_container_width=True, key="btn_save_editor_master"):
+                    st.session_state.actividades = df_modificado
+                    try:
+                        st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
+                        st.success("✅ ¡Base de datos actualizada con éxito!"); st.rerun()
+                    except Exception as e_master: st.error(f"Fallo al respaldar cambios: {e_master}")
+            else: st.info("No hay registros vigentes.")
+        with t3:
+            ex = st.file_uploader("Subir Excel modificado desde tu PC:", type=["xlsx"], key="uploader_bulk_master")
+            if ex is not None:
+                df_ex = pd.read_excel(ex)
+                if st.button("Confirmar Importación Masiva", key="btn_confirm_bulk"):
+                    if "No" not in df_ex.columns: df_ex.insert(0, "No", range(st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1, (st.session_state.actividades["
