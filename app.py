@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -6,40 +7,48 @@ from datetime import datetime, timedelta
 from PIL import Image
 import os
 import io
-import requests
-import base64
 
 # Nombre oficial del archivo base y carpeta física del proyecto
 ARCHIVO_DB = "base_matriz_mce.xlsx"
 CARPETA_EVIDENCIAS = "evidencias"
 
+# Creación automática de la carpeta de evidencias físicas si no existe en Windows
 if not os.path.exists(CARPETA_EVIDENCIAS):
     os.makedirs(CARPETA_EVIDENCIAS)
 
+# Desactivamos el límite de píxeles de la librería PIL para soportar capturas pesadas del taller
 Image.MAX_IMAGE_PIXELS = None
 
-# 1. MOTOR DE IMPORTACIÓN INTELIGENTE DE EXCEL
+# 1. MOTOR DE IMPORTACIÓN INTELIGENTE (ELIMINA HORAS Y DEJA SOLO FECHA LIMPIA)
 def importar_registros_excel():
     if os.path.exists(ARCHIVO_DB):
         try:
             df = pd.read_excel(ARCHIVO_DB)
             if not df.empty:
+                # CORRECCIÓN DE FECHAS: Detecta formatos datetime extensos y los limpia a texto DD-Mes-YY
                 for col_fecha in ["Fecha Inicio", "Fecha Compromiso"]:
                     if col_fecha in df.columns:
                         def corregir_fecha_serial(val):
                             try:
-                                if pd.isna(val) or str(val).strip() in ["None", "nan", "NaN", ""]: return ""
-                                if isinstance(val, (datetime, pd.Timestamp)): return val.strftime("%d-%b-%y")
+                                if pd.isna(val) or str(val).strip() in ["None", "nan", "NaN", ""]: 
+                                    return ""
+                                # Si viene como formato de fecha de Pandas/Python con hora, extraemos solo el componente fecha
+                                if isinstance(val, (datetime, pd.Timestamp)):
+                                    return val.strftime("%d-%b-%y")
+                                # Si viene como texto con hora extendida (ej: 2026-05-26 00:00:00)
                                 if " " in str(val):
                                     texto_fecha = str(val).split(" ")
                                     for fmt in ["%Y-%m-%d", "%d-%m-%Y"]:
-                                        try: return datetime.strptime(texto_fecha[0], fmt).strftime("%d-%b-%y")
+                                        try:
+                                            return datetime.strptime(texto_fecha[0], fmt).strftime("%d-%b-%y")
                                         except: pass
+                                # Si Excel lo lee como número entero serial
                                 if str(val).replace('.0', '').isdigit():
                                     dias = int(str(val).replace('.0', ''))
                                     return (datetime(1899, 12, 30) + timedelta(days=dias)).strftime("%d-%b-%y")
                                 return str(val).strip()
-                            except: return str(val)
+                            except: 
+                                return str(val)
                         df[col_fecha] = df[col_fecha].apply(corregir_fecha_serial)
 
                 if "% Avance" in df.columns:
@@ -63,8 +72,10 @@ def importar_registros_excel():
     else:
         return pd.DataFrame(columns=["No", "Origen", "Fecha Inicio", "Prioridad", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso", "Comentario", "Evidencia"])
 
+# Carga inicial de datos desde memoria persistente
 if 'actividades' not in st.session_state:
     st.session_state.actividades = importar_registros_excel()
+# 2. Configuración de la interfaz web corporativa (Fondo Gris Claro de Planta)
 st.set_page_config(page_title="SIGRAMA - Matriz MCE", layout="wide")
 
 st.markdown("""
@@ -79,6 +90,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# 3. Catálogos Operativos con Anclas Visuales (Iconos de Área)
 if 'personal' not in st.session_state:
     st.session_state.personal = {
         "Jesus Morales": None, "Ing. Alfredo Hdz": None, "Ing. Lorena Hdz": None, "Jesús Alday": None,
@@ -91,7 +103,7 @@ if 'areas' not in st.session_state:
     st.session_state.areas = ["⚙️ Ingenieria", "🔍 Calidad", "📦 Almacen", "✂️ Corte", "📐 Doblez", "🎨 Pintura", "🚚 Embarquez", "🏭 Planta Rio"]
 
 LISTA_CLASIFICACIONES = ["Acuerdos", "Programa de Actividades", "Actividades Sujeridas", "Dirección", "Problema de Calidad", "Problema de Seguridad", "Lista de Pendientes", "Auto Asignado", "Plan de Control y Monitoreo", "Mejoras", "Investigación", "Manuales", "Procesos"]
-
+# 4. Función de Gráficos de Pareto (Mapeo Cromático: Amarillo Claro para No Terminadas y Rango Corregido)
 def crear_grafico_pareto(df, columna, titulo):
     if df.empty:
         fig = graph_objects.Figure(); fig.update_layout(title=f"{titulo} (Sin Datos)"); return fig
@@ -104,9 +116,10 @@ def crear_grafico_pareto(df, columna, titulo):
     
     fig = px.histogram(df, x=columna, color="Estado", category_orders={columna: orden_cat}, color_discrete_map={"Terminada": "#2ECC71", "Pendiente": "#FEEA9A"}, title=titulo)
     fig.add_trace(graph_objects.Scatter(x=counts[columna], y=counts['Porcentaje Acumulado'], name="% Acumulado", yaxis="y2", line=dict(color="#FF5733", width=3)))
-    fig.update_layout(yaxis=dict(title="Cantidad"), yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=[0, 105]), legend=dict(orientation="h", y=1.02, x=1, xanchor="right"), template="plotly_white", barmode="stack")
+    fig.update_layout(yaxis=dict(title="Cantidad de Actividades"), yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=[0, 105]), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), template="plotly_white", barmode="stack")
     return fig
 
+# 5. Carga e Inyección del Logotipo Corporativo Fijo (Ampliados 2x y Título de Planta)
 nombre_logo = "LOGOTIPO COLOR (1).jfif"
 imagen_logo = Image.open(nombre_logo) if os.path.exists(nombre_logo) else None
 
@@ -158,7 +171,6 @@ if opcion_menu == "📊 Dashboard Principal":
         fig_l.update_layout(barmode="stack", template="plotly_white", height=600, legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"))
         fig_l.for_each_annotation(lambda a: a.update(text=f"<b>👤 {a.text.split('=')[-1].upper()}</b>", font=dict(size=14, color="#0C2340")))
         st.plotly_chart(fig_l, use_container_width=True)
-
 # --- TAB 2: TABLA DE CONTROL COMPLETA ---
 elif opcion_menu == "📋 Tabla de Control":
     st.subheader("Historial Completo de la Matriz de Comunicación")
@@ -189,9 +201,9 @@ elif opcion_menu == "📋 Tabla de Control":
                 elif num_avance > 0: return ['background-color: #FFF3CD; color: #856404;'] * len(fila)
             except: pass
             return [''] * len(fila)
-        df_estilizado = df_mostrar.style.apply(aplicar_colores_renglon, axis=1).format({"% Avance": "{:.0f}%"})
-        st.dataframe(df_estilizado, use_container_width=True, hide_index=True)
+        st.dataframe(df_mostrar.style.apply(aplicar_colores_renglon, axis=1).format({"% Avance": "{:.0f}%"}), use_container_width=True, hide_index=True)
     else: st.info("No se encontraron registros.")
+
 # --- TAB 3: ACTUALIZAR MIS AVANCES ---
 elif opcion_menu == "📝 Actualizar Mis Avances":
     st.subheader("Actualización de Avances de Tareas")
@@ -212,8 +224,7 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
                     progreso_actual = int(r['% Avance'])
                     fig_slider = graph_objects.Figure()
                     fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[100], marker_color="#E0E0E0", showlegend=False, hoverinfo="none"))
-                    color_barra = "#2ECC71" if progreso_actual == 100 else "#0C2340"
-                    fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[progreso_actual], marker_color=color_barra, showlegend=False, text=f"{progreso_actual}%", textposition="inside", textfont=dict(size=14, color="white")))
+                    fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[progreso_actual], marker_color="#2ECC71" if progreso_actual == 100 else "#0C2340", showlegend=False, text=f"{progreso_actual}%", textposition="inside", textfont=dict(size=14, color="white")))
                     fig_slider.update_layout(barmode="overlay", template="plotly_white", height=140, width=90, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(visible=False), yaxis=dict(range=[0, 100], showgrid=False, zeroline=False, visible=False))
                     st.plotly_chart(fig_slider, use_container_width=False, config={'displayModeBar': False}, key=f"plot_chart_{r['No']}")
                     nv_av = st.slider("Ajustar %:", min_value=0, max_value=100, value=progreso_actual, step=5, key=f"num_{r['No']}")
@@ -229,7 +240,7 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
                     
                     st.markdown('<div style="margin-top: 5px;">', unsafe_allow_html=True)
                     if st.button("Guardar Tarea", key=f"b_{r['No']}"):
-                        if nv_av == 100 and not foto and not evidencia_guardada: st.error("Falta la foto reglamentaria.")
+                        if nv_av == 100 and not foto and not evidencia_guardada: st.error("Falta la evidencia fotográfica obligatoria.")
                         else:
                             ruta_foto_final = evidencia_guardada
                             if foto is not None:
@@ -247,7 +258,7 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
                             st.session_state.actividades.loc[idx, "Evidencia"] = str(ruta_foto_final)
                             try:
                                 st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                                st.success("¡Avance registrado exitosamente en caliente!"); st.rerun()
+                                st.success("¡Avance registrado exitosamente!"); st.rerun()
                             except Exception as e_save: st.error(f"Fallo al escribir en Excel: {e_save}")
                     st.markdown('</div>', unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -265,8 +276,8 @@ elif opcion_menu == "📥 Cargar Actividades (Usuario)":
                 st.session_state.actividades = pd.concat([st.session_state.actividades, pd.DataFrame([n_f])], ignore_index=True)
                 try:
                     st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                    st.success("¡Registrada!"); st.rerun()
-                except Exception as e_add: st.error(f"Fallo Excel: {e_add}")
+                    st.success("¡Registrada con éxito!"); st.rerun()
+                except Exception as e_add: st.error(f"Fallo al escribir en Excel: {e_add}")
 # --- TAB 5: PANEL ADMINISTRADOR MÁSTER ---
 elif opcion_menu == "🔐 Panel Administrador":
     st.markdown('<p class="admin-header" style="font-size:24px; font-weight:bold; color:#0C2340; margin-bottom:15px;">Panel de Control Máster</p>', unsafe_allow_html=True)
@@ -323,11 +334,11 @@ elif opcion_menu == "🔐 Panel Administrador":
                                     elif avance_val == 100: cell.fill = fill_verde; cell.font = font_normal
                                     elif avance_val > 0: cell.fill = fill_amarillo; cell.font = font_normal
                             except: pass
-                    # 2. Extracción de Credenciales de Seguridad desde Streamlit Secrets
-                    token_git = st.secrets["github"]["token"]
-                    usuario_git = st.secrets["github"]["usuario"]
-                    repo_git = st.secrets["github"]["repo"]
-                    email_git = st.secrets["github"]["email"]
+                    # 2. CONFIGURACIÓN DIRECTA INYECTADA PARA EVITAR EL ERROR DE SECRETS
+                    token_git = "ghp_m2AAnYwA17wXW5Z4gA70uPlAnTaMeTaLeS2026"  # <-- REEMPLAZA CON TU TOKEN REAL VIGENTE
+                    usuario_git = "jesusalbertomoraleslopez-byte"
+                    repo_git = "matriz-mce-sigrama"
+                    email_git = "tu_correo_real_de_github@ejemplo.com"     # <-- REEMPLAZA CON TU CORREO DE GITHUB
                     
                     url_api = f"https://github.com{usuario_git}/{repo_git}/contents/{ARCHIVO_DB}"
                     cabeceras = {
@@ -364,7 +375,7 @@ elif opcion_menu == "🔐 Panel Administrador":
                     # 6. Envío de Petición PUT API REST a los servidores de GitHub
                     respuesta_put = requests.put(url_api, headers=cabeceras, data=json.dumps(datos_payload))
                     
-                    # CORRECCIÓN DE SINTAXIS: Validamos explícitamente códigos HTTP de éxito (200 OK y 201 Created)
+                    # CORRECCIÓN DE SINTAXIS: Validación corregida de códigos de estatus de éxito exitosos
                     if respuesta_put.status_code in [200, 201]:
                         st.success(f"✅ ¡Éxito Absoluto! La base con {len(st.session_state.actividades)} registros fue inyectada de forma permanente en tu repositorio de GitHub.")
                         st.balloons(); st.rerun()
