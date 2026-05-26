@@ -39,6 +39,7 @@ def importar_registros_excel():
                             except:
                                 return str(val)
                         df[col_fecha] = df[col_fecha].apply(corregir_fecha_serial)
+
                 # Control estricto de porcentajes y consecutivos numéricos dentro del dataframe
                 if "% Avance" in df.columns:
                     if df["% Avance"].max() <= 1.0 and df["% Avance"].max() > 0:
@@ -67,7 +68,6 @@ def importar_registros_excel():
 # Carga inicial de datos desde memoria persistente
 if 'actividades' not in st.session_state:
     st.session_state.actividades = importar_registros_excel()
-
 # 2. Configuración de la interfaz web corporativa (Fondo Gris Claro de Planta)
 st.set_page_config(page_title="SIGRAMA - Matriz MCE", layout="wide")
 
@@ -82,6 +82,7 @@ st.markdown("""
     div[data-testid="stForm"] { padding: 15px !important; }
     </style>
 """, unsafe_allow_html=True)
+
 # 3. Catálogos Operativos con Anclas Visuales (Iconos de Área)
 if 'personal' not in st.session_state:
     st.session_state.personal = {
@@ -95,7 +96,6 @@ if 'areas' not in st.session_state:
     st.session_state.areas = ["⚙️ Ingenieria", "🔍 Calidad", "📦 Almacen", "✂️ Corte", "📐 Doblez", "🎨 Pintura", "🚚 Embarquez", "🏭 Planta Rio"]
 
 LISTA_CLASIFICACIONES = ["Acuerdos", "Programa de Actividades", "Actividades Sujeridas", "Dirección", "Problema de Calidad", "Problema de Seguridad", "Lista de Pendientes", "Auto Asignado", "Plan de Control y Monitoreo", "Mejoras", "Investigación", "Manuales", "Procesos"]
-
 # 4. Función de Gráficos de Pareto (Mapeo Cromático: Amarillo Claro para No Terminadas y Rango Corregido)
 def crear_grafico_pareto(df, columna, titulo):
     if df.empty:
@@ -116,17 +116,18 @@ def crear_grafico_pareto(df, columna, titulo):
     
     fig.update_layout(
         yaxis=dict(title="Cantidad de Actividades"), 
-        yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=[0, 105]), 
+        yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=), 
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), 
         template="plotly_white", barmode="stack"
     )
     return fig
+
 # 5. Carga e Inyección del Logotipo Corporativo Fijo (Ampliados 2x y Título de Planta)
 nombre_logo = "LOGOTIPO COLOR (1).jfif"
 imagen_logo = Image.open(nombre_logo) if os.path.exists(nombre_logo) else None
 
 if imagen_logo is not None:
-    col_logo_g, col_tit_g = st.columns([1, 4])
+    col_logo_g, col_tit_g = st.columns()
     with col_logo_g: 
         st.image(imagen_logo, width=220) 
     with col_tit_g: 
@@ -137,7 +138,6 @@ else:
     st.markdown('<p class="main-title" style="text-align: center;">MATRIZ DE COMUNICACIÓN EFECTIVA</p>', unsafe_allow_html=True)
 
 opcion_menu = st.sidebar.radio("Navegación", ["📊 Dashboard Principal", "📋 Tabla de Control", "📝 Actualizar Mis Avances", "📥 Cargar Actividades (Usuario)", "🔐 Panel Administrador"])
-
 # --- TAB 1: DASHBOARD PRINCIPAL ---
 if opcion_menu == "📊 Dashboard Principal":
     col_f1, col_f2 = st.columns(2)
@@ -156,6 +156,7 @@ if opcion_menu == "📊 Dashboard Principal":
     g1, g2 = st.columns(2)
     with g1: st.plotly_chart(crear_grafico_pareto(df_f, "Origen", "Pareto 1: Actividades vs Cantidad"), use_container_width=True)
     with g2: st.plotly_chart(crear_grafico_pareto(df_f, "Responsable", "Pareto 2: Personas vs Cantidad"), use_container_width=True)
+    
     # --- PARETO 3: TÍTULOS DE RESPONSABLES GRANDE Y EN NEGRITAS ---
     st.write("---"); st.subheader("Pareto 3: Estado de Actividades de Líderes Principales")
     lideres_p = ["Jesus Morales", "Bryan Flores", "Cruz Carreon", "Luis Quintana"]
@@ -179,7 +180,6 @@ if opcion_menu == "📊 Dashboard Principal":
         fig_l.update_layout(barmode="stack", template="plotly_white", height=600, legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"))
         fig_l.for_each_annotation(lambda a: a.update(text=f"<b>👤 {a.text.split('=')[-1].upper()}</b>", font=dict(size=14, color="#0C2340")))
         st.plotly_chart(fig_l, use_container_width=True)
-
 # --- TAB 2: TABLA DE CONTROL COMPLETA ---
 elif opcion_menu == "📋 Tabla de Control":
     st.subheader("Historial Completo de la Matriz de Comunicación")
@@ -213,7 +213,8 @@ elif opcion_menu == "📋 Tabla de Control":
         df_estilizado = df_mostrar.style.apply(aplicar_colores_renglon, axis=1).format({"% Avance": "{:.0f}%"})
         st.dataframe(df_estilizado, use_container_width=True, hide_index=True)
     else: st.info("No se encontraron registros.")
-# --- TAB 3: ACTUALIZAR MIS AVANCES (CON FIX DE MUTACIÓN DIRECTA EN DATA FRAME .LOC) ---
+
+# --- TAB 3: ACTUALIZAR MIS AVANCES (CON GUARDADO FISICO DE ARCHIVOS EN DISCO) ---
 elif opcion_menu == "📝 Actualizar Mis Avances":
     st.subheader("Actualización de Avances de Tareas")
     u = st.selectbox("Identifícate (Selecciona tu nombre)", list(st.session_state.personal.keys()))
@@ -233,15 +234,16 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
                 with col_izq:
                     progreso_actual = int(r['% Avance'])
                     fig_slider = graph_objects.Figure()
-                    fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[100], marker_color="#E0E0E0", showlegend=False, hoverinfo="none"))
+                    fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=, marker_color="#E0E0E0", showlegend=False, hoverinfo="none"))
                     color_barra = "#2ECC71" if progreso_actual == 100 else "#0C2340"
                     fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[progreso_actual], marker_color=color_barra, showlegend=False, text=f"{progreso_actual}%", textposition="inside", textfont=dict(size=14, color="white")))
-                    fig_slider.update_layout(barmode="overlay", template="plotly_white", height=140, width=90, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(visible=False), yaxis=dict(range=[0, 100], showgrid=False, zeroline=False, visible=False))
+                    fig_slider.update_layout(barmode="overlay", template="plotly_white", height=140, width=90, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(visible=False), yaxis=dict(range=, showgrid=False, zeroline=False, visible=False))
                     st.plotly_chart(fig_slider, use_container_width=False, config={'displayModeBar': False}, key=f"plot_chart_{r['No']}")
                     nv_av = st.slider("Ajustar %:", min_value=0, max_value=100, value=progreso_actual, step=5, key=f"num_{r['No']}")
                 
                 with col_der:
                     nv_co = st.text_input("Comentarios de bitácora:", str(r['Comentario']), key=f"c_{r['No']}")
+                    
                     evidencia_guardada = str(r['Evidencia']).strip()
                     if evidencia_guardada and os.path.exists(evidencia_guardada):
                         st.image(Image.open(evidencia_guardada), width=150, caption="📸 Evidencia Optimizada")
@@ -269,9 +271,10 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
                             st.session_state.actividades.loc[idx, "% Avance"] = int(nv_av)
                             st.session_state.actividades.loc[idx, "Comentario"] = str(nv_co)
                             st.session_state.actividades.loc[idx, "Evidencia"] = str(ruta_foto_final)
+                            
                             try:
                                 st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                                st.success("¡Avance registrado exitosamente!"); st.rerun()
+                                st.success("¡Avance registrado exitosamente en caliente!"); st.rerun()
                             except Exception as e_save: st.error(f"Fallo al escribir en Excel: {e_save}")
                     st.markdown('</div>', unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -290,48 +293,49 @@ elif opcion_menu == "📥 Cargar Actividades (Usuario)":
                     st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
                     st.success("¡Registrada con éxito!"); st.rerun()
                 except Exception as e_add: st.error(f"Fallo al escribir en Excel: {e_add}")
+
 # --- TAB 5: PANEL ADMINISTRADOR MÁSTER ---
 elif opcion_menu == "🔐 Panel Administrador":
-    st.markdown('<p class="admin-header" style="font-size:24px; font-weight:bold; color:#0C2340; margin-bottom:15px;">Panel de Control Máster</p>', unsafe_allow_html=True)
     if st.text_input("Introduce la contraseña Máster:", type="password", key="pwd_admin_master") == "SigramaMetales2026":
-        st.success("Acceso Máster Autorizado")
         st.write("---")
-        st.markdown("### 📊 Consola de Sincronización Automática Bidireccional (Streamlit 🔄 GitHub)")
+        st.markdown("### 📊 Consola de Sincronización Automática Bidireccional")
         c_adm1, c_adm2 = st.columns(2)
+        
         with c_adm1:
-            st.info("🔄 Descarga los registros más recientes que estén guardados actualmente en tu repositorio de GitHub.")
             if st.button("📥 IMPORTAR BASE DE DATOS DESDE GITHUB", use_container_width=True, key="btn_import_master"):
                 st.session_state.actividades = importar_registros_excel()
                 st.success("¡Sincronizado! Datos actualizados desde GitHub."); st.rerun()
+                
         with c_adm2:
-            st.warning("💾 Guarda los cambios en Excel y ejecuta un GIT PUSH automático directo a tu cuenta de GitHub.")
             if st.button("💾 RESPALDAR Y CONFIRMAR CAMBIOS EN GITHUB", type="primary", use_container_width=True, key="btn_backup_master"):
                 try:
                     df_guardar = pd.DataFrame(st.session_state.actividades)
                     with pd.ExcelWriter(ARCHIVO_DB, engine='openpyxl') as w:
                         df_guardar.to_excel(w, index=False, sheet_name='Base_MCE')
+                        ws = w.sheets['Base_MCE']
+                        anchos = {'A': 10, 'B': 25, 'C': 15, 'D': 15, 'E': 22, 'F': 18, 'G': 45, 'H': 12, 'I': 20, 'J': 25, 'K': 40}
+                        for col, ancho in anchos.items(): ws.column_dimensions[col].width = ancho
+                    
                     git_token = st.secrets["github"]["token"]
                     git_user = st.secrets["github"]["usuario"]
                     git_repo = st.secrets["github"]["repo"]
                     git_email = st.secrets["github"]["email"]
+                    
                     os.system(f'git config --global user.email "{git_email}"')
                     os.system(f'git config --global user.name "{git_user}"')
                     os.system(f'git add {ARCHIVO_DB}')
-                    os.system('git commit -m "Persistence Fix: Actualizacion automatica de registros MCE"')
+                    os.system('git commit -m "Automated update"')
                     os.system(f'git push https://{git_user}:{git_token}@://github.com{git_user}/{git_repo}.git main')
-                    st.success(f"✅ ¡Éxito! Registros empujados automáticamente a tu archivo en GitHub.")
+                    st.success("✅ ¡Éxito! Datos respaldados en tu archivo en GitHub.")
                     st.rerun()
-                except Exception as e: st.error(f"❌ Error en la sincronización robótica: {e}")
+                except Exception as e: st.error(f"❌ Error en la sincronización: {e}")
         st.write("---")
+        
         t1, t2, t3 = st.tabs(["➕ Altas Catálogos", "✏️ Tabla de Edición Directa y Bajas", "📥 Carga Masiva Excel"])
         with t1:
-            n_n = st.text_input("Nombre de Colaborador:")
-            if st.button("Registrar Empleado", key="btn_add_emp") and n_n: st.session_state.personal[n_n] = None; st.success("Registrado."); st.rerun()
-            st.write("---")
-            n_a = st.text_input("Nombre de Área:")
-            if st.button("Registrar Área", key="btn_add_area") and n_a: st.session_state.areas.append(n_a); st.success("Añadida."); st.rerun()
+            n_n = st.text_input("Nombre:")
+            if st.button("Registrar Empleado", key="btn_add_emp") and n_n: st.session_state.personal[n_n] = None; st.rerun()
         with t2:
-            st.subheader("✏️ Edición en Caliente de la Matriz MCE")
             df_editable = pd.DataFrame(st.session_state.actividades)
             if not df_editable.empty:
                 configuracion_columnas = {
@@ -352,12 +356,17 @@ elif opcion_menu == "🔐 Panel Administrador":
                     st.session_state.actividades = df_modificado
                     try:
                         st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                        st.success("✅ ¡Base de datos actualizada con éxito!"); st.rerun()
-                    except Exception as e_master: st.error(f"Fallo al respaldar cambios: {e_master}")
-            else: st.info("No hay registros vigentes.")
+                        st.success("✅ ¡Base de datos actualizada!"); st.rerun()
+                    except Exception as e_master: st.error(f"Fallo al respaldar: {e_master}")
         with t3:
-            ex = st.file_uploader("Subir Excel modificado desde tu PC:", type=["xlsx"], key="uploader_bulk_master")
+            ex = st.file_uploader("Subir Excel:", type=["xlsx"], key="uploader_bulk_master")
             if ex is not None:
                 df_ex = pd.read_excel(ex)
                 if st.button("Confirmar Importación Masiva", key="btn_confirm_bulk"):
-                    if "No" not in df_ex.columns: df_ex.insert(0, "No", range(st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1, (st.session_state.actividades["
+                    if "No" not in df_ex.columns: df_ex.insert(0, "No", range(st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1, (st.session_state.actividades["No"].max() + 1 if not st.session_state.actividades.empty else 1) + len(df_ex)))
+                    if "Evidencia" not in df_ex.columns: df_ex["Evidencia"] = ""
+                    st.session_state.actividades = pd.concat([st.session_state.actividades, df_ex], ignore_index=True)
+                    try:
+                        st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
+                        st.success("¡Importado!"); st.rerun()
+                    except Exception as e_bulk: st.error(f"Error: {e_bulk}")
