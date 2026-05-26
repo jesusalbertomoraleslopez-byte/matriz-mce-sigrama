@@ -193,18 +193,20 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
                 with col_izq:
                     progreso_actual = int(r['% Avance'])
                     fig_slider = graph_objects.Figure()
-                    fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=, marker_color="#E0E0E0", showlegend=False, hoverinfo="none"))
+                    fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[100], marker_color="#E0E0E0", showlegend=False, hoverinfo="none"))
                     fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[progreso_actual], marker_color="#2ECC71" if progreso_actual == 100 else "#0C2340", showlegend=False, text=f"{progreso_actual}%", textposition="inside"))
-                    fig_slider.update_layout(barmode="overlay", template="plotly_white", height=140, width=90, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(visible=False), yaxis=dict(range=, visible=False))
+                    fig_slider.update_layout(barmode="overlay", template="plotly_white", height=140, width=90, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(visible=False), yaxis=dict(range=[0, 100], visible=False))
                     st.plotly_chart(fig_slider, use_container_width=False, config={'displayModeBar': False}, key=f"plot_chart_{r['No']}")
                     nv_av = st.slider("Ajustar %:", min_value=0, max_value=100, value=progreso_actual, step=5, key=f"num_{r['No']}")
                 with col_der:
                     nv_co = st.text_input("Comentarios de bitácora:", str(r['Comentario']), key=f"c_{r['No']}")
                     evidencia_guardada = str(r['Evidencia']).strip()
-                    if evidencia_guardada and os.path.exists(evidencia_guardada): st.image(Image.open(evidencia_guardada), width=150)
+                    if evidencia_guardada and os.path.exists(evidencia_guardada): 
+                        st.image(Image.open(evidencia_guardada), width=150)
                     foto = st.file_uploader("Subir Evidencia (Cierre 100%):", type=["jpg","png","jpeg"], key=f"i_{r['No']}") if nv_av == 100 else None
                     if st.button("Guardar Tarea", key=f"b_{r['No']}"):
-                        if nv_av == 100 and not foto and not evidencia_guardada: st.error("Falta la foto.")
+                        if nv_av == 100 and not foto and not evidencia_guardada: 
+                            st.error("Falta la foto.")
                         else:
                             ruta_foto_final = evidencia_guardada
                             if foto is not None:
@@ -223,7 +225,6 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
                                 st.success("¡Guardado!"); st.rerun()
                             except Exception as e_save: st.error(f"Fallo Excel: {e_save}")
                 st.markdown('</div>', unsafe_allow_html=True)
-
 elif opcion_menu == "📥 Cargar Actividades (Usuario)":
     st.subheader("Captura de Nuevas Actividades")
     if st.text_input("Contraseña de Usuario:", type="password", key="pwd_carga_usr") == "Metales":
@@ -238,6 +239,7 @@ elif opcion_menu == "📥 Cargar Actividades (Usuario)":
                     st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
                     st.success("¡Registrada!"); st.rerun()
                 except Exception as e_add: st.error(f"Fallo Excel: {e_add}")
+
 elif opcion_menu == "🔐 Panel Administrador":
     st.markdown('### Panel de Control Máster')
     if st.text_input("Introduce la contraseña Máster:", type="password", key="pwd_admin_master") == "SigramaMetales2026":
@@ -245,20 +247,13 @@ elif opcion_menu == "🔐 Panel Administrador":
         st.write("---")
         st.markdown("### 📊 Consola de Sincronización Automática con GitHub (API REST)")
         c_adm1, c_adm2 = st.columns(2)
-        
         with c_adm1:
-            st.info("🔄 Descarga los registros más recientes que estén guardados actualmente en tu repositorio de GitHub.")
             if st.button("📥 IMPORTAR BASE DE DATOS DESDE GITHUB", use_container_width=True, key="btn_import_master"):
-                st.session_state.actividades = importar_registros_excel()
+                st.session_state.actividades = importing_registros_excel()
                 st.success("¡Sincronizado! Datos actualizados desde GitHub."); st.rerun()
-                
         with c_adm2:
-            st.warning("💾 Guarda los cambios en Excel y ejecuta un PUT automático directo a la API de GitHub.")
             if st.button("🚀 RESPALDAR AND SUBIR DIRECTO A GITHUB", type="primary", use_container_width=True, key="btn_git_api_push_master"):
-                import requests
-                import base64
-                import json
-                
+                import requests, base64, json
                 try:
                     df_guardar = pd.DataFrame(st.session_state.actividades)
                     with pd.ExcelWriter(ARCHIVO_DB, engine='openpyxl') as w:
@@ -266,59 +261,37 @@ elif opcion_menu == "🔐 Panel Administrador":
                         ws = w.sheets['Base_MCE']
                         anchos = {'A': 10, 'B': 25, 'C': 15, 'D': 15, 'E': 22, 'F': 18, 'G': 45, 'H': 12, 'I': 20, 'J': 25, 'K': 40}
                         for col, ancho in anchos.items(): ws.column_dimensions[col].width = ancho
-                        
                         from openpyxl.styles import PatternFill, Font
-                        fill_verde = PatternFill(start_color="D4EDDA", end_color="D4EDDA", fill_type="solid")
-                        fill_amarillo = PatternFill(start_color="FFF3CD", end_color="FFF3CD", fill_type="solid")
-                        fill_rojo = PatternFill(start_color="F8D7DA", end_color="F8D7DA", fill_type="solid")
-                        font_rojo = Font(color="721C24", bold=True)
-                        font_normal = Font(color="000000")
+                        fill_verde, fill_amarillo, fill_rojo = PatternFill(start_color="D4EDDA", fill_type="solid"), PatternFill(start_color="FFF3CD", fill_type="solid"), PatternFill(start_color="F8D7DA", fill_type="solid")
+                        font_rojo, font_normal = Font(color="721C24", bold=True), Font(color="000000")
                         hoy_dt = datetime.now()
-                        
                         for row_idx in range(2, ws.max_row + 1):
                             try:
                                 avance_val = int(str(ws.cell(row=row_idx, column=8).value).replace('%','').strip())
                                 fecha_comp_str = str(ws.cell(row=row_idx, column=9).value).strip()
                                 es_vencido = False
                                 if avance_val < 100 and fecha_comp_str:
-                                    try:
-                                        if datetime.strptime(fecha_comp_str, "%d-%b-%y") < hoy_dt: es_vencido = True
-                                    except: pass
+                                    if datetime.strptime(fecha_comp_str, "%d-%b-%y") < hoy_dt: es_vencido = True
                                 for col_idx in range(1, 12):
                                     cell = ws.cell(row=row_idx, column=col_idx)
                                     if avance_val < 100 and es_vencido: cell.fill = fill_rojo; cell.font = font_rojo
                                     elif avance_val == 100: cell.fill = fill_verde; cell.font = font_normal
                                     elif avance_val > 0: cell.fill = fill_amarillo; cell.font = font_normal
                             except: pass
-
                     token_git = "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"
-                    usuario_git = "jesusalbertomoraleslopez-byte"
-                    repo_git = "matriz-mce-sigrama"
-                    email_git = "jesusalbertomoraleslopez@gmail.com"
-                    
+                    usuario_git, repo_git, email_git = "jesusalbertomoraleslopez-byte", "matriz-mce-sigrama", "jesusalbertomoraleslopez@gmail.com"
                     url_api = f"https://github.com{usuario_git}/{repo_git}/contents/{ARCHIVO_DB}"
                     cabeceras = {"Authorization": f"token {token_git}", "Accept": "application/vnd.github.v3+json"}
-                    
                     respuesta_get = requests.get(url_api, headers=cabeceras)
-                    sha_archivo = None
-                    if respuesta_get.status_code == 200: sha_archivo = respuesta_get.json().get("sha")
-                    
-                    with open(ARCHIVO_DB, "rb") as archivo_binario:
-                        excel_base64 = base64.b64encode(archivo_binario.read()).decode("utf-8")
-                    
-                    datos_payload = {
-                        "message": f"Sincronizacion MCE Planta ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})",
-                        "content": excel_base64, "branch": "main",
-                        "committer": {"name": usuario_git, "email": email_git}
-                    }
+                    sha_archivo = respuesta_get.json().get("sha") if respuesta_get.status_code == 200 else None
+                    with open(ARCHIVO_DB, "rb") as archivo_binario: excel_base64 = base64.b64encode(archivo_binario.read()).decode("utf-8")
+                    datos_payload = {"message": f"Sincronizacion MCE Planta ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})", "content": excel_base64, "branch": "main", "committer": {"name": usuario_git, "email": email_git}}
                     if sha_archivo: datos_payload["sha"] = sha_archivo
-                        
                     respuesta_put = requests.put(url_api, headers=cabeceras, data=json.dumps(datos_payload))
                     if respuesta_put.status_code in (200, 201):
-                        st.success(f"✅ ¡Éxito Absoluto! Base respaldada directamente en GitHub.")
-                        st.balloons(); st.rerun()
-                    else: st.error(f"❌ Error en la API: {respuesta_put.text}")
-                except Exception as e_api: st.error(f"Fallo critico HTTP REST: {e_api}")
+                        st.success(f"✅ ¡Éxito Absoluto! Base respaldada directamente en GitHub."); st.balloons(); st.rerun()
+                    else: st.error(f"❌ Error en la API. Respuesta: {respuesta_put.text}")
+                except Exception as error_global_api: st.error(f"Fallo critico HTTP REST: {error_global_api}")
         st.write("---")
         t1, t2, t3 = st.tabs(["➕ Altas Catálogos", "✏️ Tabla de Edición Directa", "📥 Carga Masiva Excel"])
         with t1:
