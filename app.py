@@ -335,10 +335,10 @@ elif opcion_menu == "🔐 Panel Administrador":
                                     elif avance_val > 0: cell.fill = fill_amarillo; cell.font = font_normal
                             except: pass
                     # 2. CONFIGURACIÓN DIRECTA INYECTADA PARA EVITAR EL ERROR DE SECRETS
-                    token_git = "ghp_m2AAnYwA17wXW5Z4gA70uPlAnTaMeTaLeS2026"  # <-- REEMPLAZA CON TU TOKEN REAL VIGENTE
+                    token_git = "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"  # <-- REEMPLAZA CON TU TOKEN REAL VIGENTE
                     usuario_git = "jesusalbertomoraleslopez-byte"
                     repo_git = "matriz-mce-sigrama"
-                    email_git = "tu_correo_real_de_github@ejemplo.com"     # <-- REEMPLAZA CON TU CORREO DE GITHUB
+                    email_git = "jesus.alberto.morales.lopez@gmail.com"     # <-- REEMPLAZA CON TU CORREO DE GITHUB
                     
                     url_api = f"https://github.com{usuario_git}/{repo_git}/contents/{ARCHIVO_DB}"
                     cabeceras = {
