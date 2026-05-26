@@ -253,7 +253,7 @@ elif opcion_menu == "🔐 Panel Administrador":
         c_adm1, c_adm2 = st.columns(2)
         with c_adm1:
             if st.button("📥 IMPORTAR BASE DE DATOS DESDE GITHUB", use_container_width=True, key="btn_import_master"):
-                st.session_state.actividades = importing_registros_excel()
+                st.session_state.actividades = importar_registros_excel()
                 st.success("¡Sincronizado! Datos actualizados desde GitHub."); st.rerun()
         with c_adm2:
             if st.button("🚀 RESPALDAR AND SUBIR DIRECTO A GITHUB", type="primary", use_container_width=True, key="btn_git_api_push_master"):
