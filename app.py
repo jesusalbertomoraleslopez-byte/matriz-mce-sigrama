@@ -74,34 +74,43 @@ st.markdown("""
     .main-title { font-size:28px !important; font-weight: bold; color: #0C2340; text-align: left; margin-top: 0px; }
     .card-header { font-size: 20px !important; font-weight: bold; color: #0C2340; margin-bottom: 3px; }
     .card-desc { font-size: 16px !important; font-weight: 500; color: #333333; margin-bottom: 5px; }
+
+    
         /* CONFIGURACIÓN MÁSTER 3X PARA EL NOMBRE DEL OPERADOR */
-    /* CONFIGURACIÓN MÁSTER PARA EL CONTENEDOR DEL NOMBRE */
-    div[data-testid="stSelectbox"] div[data-baseweb="select"] {
-        font-size: 42px !important; 
+    /* CONFIGURACIÓN MÁSTER EXCLUSIVA SOLO PARA EL NOMBRE DEL OPERADOR (3X) */
+    div[data-testid="stSelectbox"]:first-of-type div[data-baseweb="select"] {
+        font-size: 36px !important; 
         font-weight: 800 !important; 
         color: #0C2340 !important;  
-        height: 85px !important; /* Aumentamos el alto para que quepa todo el texto */
-        min-height: 85px !important;
+        height: 80px !important; 
+        min-height: 80px !important;
         display: flex !important;
         align-items: center !important;
     }
     
-    /* Forza al texto seleccionado a centrarse y ocupar todo el espacio vertical sin cortarse */
-    div[data-testid="stSelectbox"] [data-testid="stSelectbox-SingleValue"],
-    div[data-testid="stSelectbox"] div[data-baseweb="select"] span {
-        line-height: 85px !important;
-        font-size: 42px !important;
-        overflow: visible !important; /* Evita que el texto se oculte en los bordes */
+    div[data-testid="stSelectbox"]:first-of-type [data-testid="stSelectbox-SingleValue"],
+    div[data-testid="stSelectbox"]:first-of-type div[data-baseweb="select"] span {
+        line-height: 80px !important;
+        font-size: 36px !important;
+        overflow: visible !important; 
     }
 
-    /* Calibración de la lista que se despliega al dar clic */
+    /* Calibración de la lista desplegable de nombres gigante */
     div[data-baseweb="popover"] ul li {
-        font-size: 32px !important;
-        padding-top: 12px !important;
-        padding-bottom: 12px !important;
+        font-size: 28px !important;
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
         line-height: 1.2 !important;
     }
- padding-bottom: 10px !important;
+
+    /* REPARACIÓN PARA LOS DEMÁS SELECTORES DE LAS TABLAS (Vuelven a tamaño normal) */
+    div[data-testid="stSelectbox"] ~ div[data-testid="stSelectbox"] div[data-baseweb="select"],
+    .stSelectbox div[data-baseweb="select"] {
+        font-size: 14px !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+ng-bottom: 10px !important;
     }
     </style>
 """, unsafe_allow_html=True)
