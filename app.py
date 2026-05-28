@@ -230,8 +230,60 @@ elif opcion_menu == "📋 Tabla de Control":
             except: pass
             return [''] * len(fila)
 
-        st.dataframe(df_mostrar.style.apply(aplicar_colores_renglon, axis=1).format({"% Avance": "{:.0f}%"}), use_container_width=True, hide_index=True)
-    else: st.info("No se encontraron registros.")
+  
+    st.dataframe(df_mostrar.style.apply(aplicar_colores_renglon, axis=1).format({"% Avance": "{:.0f}%"}), use_container_width=True, hide_index=True)
+    
+    import io
+
+    def generar_excel_con_colores(df_local):
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df_local.to_excel(writer, index=False, sheet_name='Historial_MCE')
+            workbook = writer.book
+            worksheet = writer.sheets['Historial_MCE']
+            
+            for col in worksheet.columns:
+                max_len = max(len(str(cell.value or '')) for cell in col)
+                col_letter = col.column_letter
+                worksheet.column_dimensions[col_letter].width = max(max_len + 3, 12)
+                
+            from openpyxl.styles import PatternFill, Font
+            fill_verde = PatternFill(start_color="D4EDDA", fill_type="solid")
+            fill_amarillo = PatternFill(start_color="FFF3CD", fill_type="solid")
+            fill_rojo = PatternFill(start_color="F8D7DA", fill_type="solid")
+            font_rojo = Font(color="721C24", bold=True)
+            
+            for row_idx in range(2, worksheet.max_row + 1):
+                try:
+                    avance_val = int(str(worksheet.cell(row=row_idx, column=8).value).replace('%','').strip())
+                    fecha_comp_str = str(worksheet.cell(row=row_idx, column=9).value).strip()
+                    
+                    es_vencido = False
+                    if avance_val < 100 and fecha_comp_str and fecha_comp_str != "None":
+                        from datetime import datetime
+                        if datetime.strptime(fecha_comp_str, "%d-%b-%y") < datetime.now():
+                            es_vencido = True
+                    
+                    for col_idx in range(1, worksheet.max_column + 1):
+                        cell = worksheet.cell(row=row_idx, column=col_idx)
+                        if avance_val < 100 and es_vencido:
+                            cell.fill = fill_rojo; cell.font = font_rojo
+                        elif avance_val == 100:
+                            cell.fill = fill_verde
+                        elif avance_val > 0:
+                            cell.fill = fill_amarillo
+                except:
+                    pass
+        return output.getvalue()
+
+    excel_data = generar_excel_con_colores(df_mostrar)
+    st.download_button(
+        label="📥 Descargar Reporte en Excel (.xlsx con Colores)",
+        data=excel_data,
+        file_name=f"Reporte_Matriz_MCE_{datetime.now().strftime('%d-%b-%y')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
 
 # --- TAB 3: ACTUALIZAR MIS AVANCES (CON FILTROS CORPORATIVOS, MINI DASHBOARD Y LISTADO EN CASCADA) ---
 elif opcion_menu == "📝 Actualizar Mis Avances":
