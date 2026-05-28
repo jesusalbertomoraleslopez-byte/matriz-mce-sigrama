@@ -77,20 +77,20 @@ st.markdown("""
 
     
         /* CONFIGURACIÓN MÁSTER 3X PARA EL NOMBRE DEL OPERADOR */
-    /* CONFIGURACIÓN MÁSTER EXCLUSIVA SOLO PARA EL NOMBRE DEL OPERADOR (3X) */
-    div[data-testid="stSelectbox"]:first-of-type div[data-baseweb="select"] {
+       /* CONFIGURACIÓN MÁSTER EXCLUSIVA: AFECTA ÚNICAMENTE AL SELECTOR DE LA PESTAÑA DE OPERADORES */
+    div[data-testid="stSidebar"] ~ div div[class*="stSelectbox"] div[data-baseweb="select"] {
         font-size: 36px !important; 
         font-weight: 800 !important; 
         color: #0C2340 !important;  
-        height: 80px !important; 
-        min-height: 80px !important;
+        height: 85px !important; /* Aumentamos a 85px para dar espacio total al texto */
+        min-height: 85px !important;
         display: flex !important;
         align-items: center !important;
     }
     
-    div[data-testid="stSelectbox"]:first-of-type [data-testid="stSelectbox-SingleValue"],
-    div[data-testid="stSelectbox"]:first-of-type div[data-baseweb="select"] span {
-        line-height: 80px !important;
+    div[data-testid="stSidebar"] ~ div div[class*="stSelectbox"] [data-testid="stSelectbox-SingleValue"],
+    div[data-testid="stSidebar"] ~ div div[class*="stSelectbox"] div[data-baseweb="select"] span {
+        line-height: 85px !important;
         font-size: 36px !important;
         overflow: visible !important; 
     }
@@ -103,14 +103,12 @@ st.markdown("""
         line-height: 1.2 !important;
     }
 
-    /* REPARACIÓN PARA LOS DEMÁS SELECTORES DE LAS TABLAS (Vuelven a tamaño normal) */
-    div[data-testid="stSelectbox"] ~ div[data-testid="stSelectbox"] div[data-baseweb="select"],
-    .stSelectbox div[data-baseweb="select"] {
+    /* FILTRO DE EXTINCIÓN: Mantiene todos los selectores de las tablas de datos en su tamaño normal original */
+    div[data-testid="stHorizontalBlock"] div[data-testid="stSelectbox"] div[data-baseweb="select"],
+    div[data-testid="element-container"] div[data-testid="stSelectbox"] div[data-baseweb="select"] {
         font-size: 14px !important;
         height: auto !important;
         min-height: auto !important;
-    }
-ng-bottom: 10px !important;
     }
     </style>
 """, unsafe_allow_html=True)
