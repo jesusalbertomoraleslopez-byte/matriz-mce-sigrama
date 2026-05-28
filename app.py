@@ -115,14 +115,15 @@ st.markdown("""
 
 if 'personal' not in st.session_state:
     st.session_state.personal = {
-        "Jesus Morales": None, "Ing. Alfredo Hdz": None, "Ing. Lorena Hdz": None, "Jesús Alday": None,
+        "Jesus Morales": None, "Ing. Alfredo Hdz": None, "Ing. Lorena Hdz": None,
         "Alejandra Arellano": None, "Jose Romo": None, "Jose Manuel Aldama": None, "Fernando Llanas": None,
         "Celso": None, "Cruz Carreon": None, "Luis Quintana": None, "Bryan Flores": None,
-        "Jorge Sanchez": None, "Voctor Montoya": None, "Moises Hernandez": None, "Rodolfo Ferndez M": None
+        "Jorge Sanchez": None, "Voctor Montoya": None, "Rodolfo Ferndez M": None
     }
 
 if 'areas' not in st.session_state:
-    st.session_state.areas = ["⚙️ Ingenieria", "🔍 Calidad", "📦 Almacen", "✂️ Corte", "📐 Doblez", "🎨 Pintura", "🚚 Embarquez", "🏭 Planta Rio"]
+    st.session_state.areas = ["⚙️ Ingenieria", "🔍 Calidad", "📦 Almacen", "✂️ Corte", "📐 Doblez", "🎨 Pintura", "🚚 Embarquez", "🏭 Planta Rio", "🛠️ Lijado"]
+
 
 LISTA_CLASIFICACIONES = ["Acuerdos", "Programa de Actividades", "Actividades Sujeridas", "Dirección", "Problema de Calidad", "Problema de Seguridad", "Lista de Pendientes", "Auto Asignado", "Plan de Control y Monitoreo", "Mejoras", "Investigación", "Manuales", "Procesos"]
 
