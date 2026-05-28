@@ -143,21 +143,19 @@ def crear_grafico_pareto(df, columna, titulo):
     fig.update_layout(yaxis=dict(title="Cantidad"), yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=[0, 100]), legend=dict(orientation="h", y=1.02, x=1, xanchor="right"), template="plotly_white", barmode="stack")
     return fig
 
-# 5. Carga e Inyección del Logotipo Corporativo Fijo (Ampliados 2x y Título de Planta Corregido)
-nombre_logo = "LOGOTIPO COLOR (1).jfif"
-imagen_logo = Image.open(nombre_logo) if os.path.exists(nombre_logo) else None
+# 5. Carga e Inyección del Banner Corporativo Superior Giant 2271x448
+nombre_banner = "LIDERAZGO PLANTA METALAES IMAGEN.png"
 
-if imagen_logo is not None:
-    # CORRECCIÓN EN DURO: Se añade la proporción [1, 4] para estructurar las columnas de forma correcta
-    col_logo_g, col_tit_g = st.columns([1, 4])
-    with col_logo_g: 
-        st.image(imagen_logo, width=220) 
-    with col_tit_g: 
-        st.markdown('<h2 style="color: #0C2340; margin-bottom: 0px; padding-top: 10px; font-weight: bold;">PLANTA METALES Y MAQUINADOS</h2>', unsafe_allow_html=True)
-        st.markdown('<p class="main-title">MATRIZ DE COMUNICACIÓN EFECTIVA</p>', unsafe_allow_html=True)
+# Verificamos si existe el archivo del banner en el repositorio
+if os.path.exists(nombre_banner):
+    imagen_banner = Image.open(nombre_banner)
+    # Mostramos el banner expandido al ancho total de la página
+    st.image(imagen_banner, use_container_width=True)
 else:
-    st.markdown('<h2 style="color: #0C2340; text-align: center; font-weight: bold;">PLANTA METALES Y MAQUINADOS</h2>', unsafe_allow_html=True)
+    # Respaldo en texto limpio y centrado por si borran la imagen del repositorio
+    st.markdown('<h2 style="color: #0C2340; text-align: center; font-weight: bold; margin-top:0px;">PLANTA METALES Y MAQUINADOS</h2>', unsafe_allow_html=True)
     st.markdown('<p class="main-title" style="text-align: center;">MATRIZ DE COMUNICACIÓN EFECTIVA</p>', unsafe_allow_html=True)
+
 
 
 opcion_menu = st.sidebar.radio("Navegación", ["📊 Dashboard Principal", "📋 Tabla de Control", "📝 Actualizar Mis Avances", "📥 Cargar Actividades (Usuario)", "🔐 Panel Administrador", "👑 Reglas de Liderazgo"])
