@@ -160,7 +160,8 @@ else:
     st.markdown('<p class="main-title" style="text-align: center;">MATRIZ DE COMUNICACIÓN EFECTIVA</p>', unsafe_allow_html=True)
 
 
-opcion_menu = st.sidebar.radio("Navegación", ["📊 Dashboard Principal", "📋 Tabla de Control", "📝 Actualizar Mis Avances", "📥 Cargar Actividades (Usuario)", "🔐 Panel Administrador"])
+opcion_menu = st.sidebar.radio("Navegación", ["📊 Dashboard Principal", "📋 Tabla de Control", "📝 Actualizar Mis Avances", "📥 Cargar Actividades (Usuario)", "🔐 Panel Administrador", "👑 Reglas de Liderazgo"])
+
 if opcion_menu == "📊 Dashboard Principal":
     col_f1, col_f2 = st.columns(2)
     with col_f1: area_sel = st.selectbox("Filtrar por Área", ["Todas"] + st.session_state.areas)
@@ -498,3 +499,48 @@ elif opcion_menu == "🔐 Panel Administrador":
                         st.success("¡Importado!"); st.rerun()
                     except Exception as e_b: st.error(f"Error: {e_b}")
 
+# --- NUEVA SECCIÓN: REGLAS DE LIDERAZGO ---
+elif opcion_menu == "👑 Reglas de Liderazgo":
+    st.markdown('<h2 style="color: #0C2340; font-weight: bold; margin-bottom: 20px;">👑 REGLAS DE LIDERAZGO: PLANTA METALES</h2>', unsafe_allow_html=True)
+    st.write("Guía oficial de comportamiento, gestión y control en piso de producción.")
+    st.write("---")
+
+    col_l1, col_l2 = st.columns(2)
+
+    with col_l1:
+        with st.expander("🪵 Liderazgo y Comportamiento en Piso", expanded=True):
+            st.markdown("""
+            1. **Predica con el ejemplo:** Cumple las normas de seguridad, puntualidad y vestimenta antes que nadie.
+            2. **Lidera desde el Gemba:** Pasa el 80% de tu tiempo en el piso de producción, no en la oficina.
+            3. **Corrige en privado, reconoce en público:** Protege la dignidad de tu personal y celebra sus éxitos frente al grupo.
+            4. **Escucha antes de juzgar:** Investiga la causa raíz de un problema antes de buscar culpables.
+            5. **Mantén la consistencia:** Aplica las reglas y sanciones de manera justa, equitativa y sin favoritismos.
+            """, unsafe_allow_html=True)
+
+        with st.expander("💼 Operación y Gestión del Personal", expanded=True):
+            st.markdown("""
+            1. **Cero tolerancia al ocio:** Asegura que cada operador tenga una tarea asignada en todo momento.
+            2. **Activa el plan B de inmediato:** Si la producción se detiene, reasigna al personal a actividades secundarias (5S, capacitación, mantenimiento).
+            3. **Informa desviaciones a Dirección:** Reporta al final del turno cualquier falta de actividad programada y justifica el uso del tiempo.
+            4. **Capacita constantemente:** Desarrollar la polivalencia de tu equipo reduce la dependencia de personas específicas.
+            5. **La seguridad es primero:** Detén cualquier operación que ponga en riesgo la integridad física del personal.
+            """, unsafe_allow_html=True)
+
+    with col_l2:
+        with st.expander("📢 Comunicación y Relaciones Interdepartamentales", expanded=True):
+            st.markdown("""
+            1. **Arranca con juntas Tier 1:** Realiza reuniones de 5 minutos al inicio del turno para alinear metas y riesgos.
+            2. **Comunícate con datos:** Al solicitar apoyo a Calidad o Mantenimiento, habla con números y hechos, no con opiniones.
+            3. **Define el 'para cuándo':** Al delegar o solicitar una tarea a otra jefatura, establece siempre una fecha y hora límite.
+            4. **Cierra el ciclo de comunicación:** Confirma que el receptor entendió el mensaje pidiéndole que lo explique con sus palabras.
+            5. **Fomenta las ideas de mejora:** Escucha y canaliza las propuestas de los operadores para optimizar los procesos.
+            """, unsafe_allow_html=True)
+
+        with st.expander("🎯 Delegación y Control", expanded=True):
+            st.markdown("""
+            1. **Delega con base en la habilidad:** Asigna las tareas críticas al personal que ya demostró la competencia para resolverlas.
+            2. **Sigue el rastro, no microgestiones:** Define puntos de revisión intermedios en lugar de vigilar cada paso del proceso.
+            3. **Entrega recursos completos:** Al delegar, asegura que la persona tenga la herramienta, la información y el tiempo necesarios.
+            4. **Asume la responsabilidad final:** Si tu equipo falla, tú eres el responsable ante la Dirección; no culpes a tus subordinados.
+            5. **Estandariza los éxitos:** Cuando una solución funcione, documenta el nuevo método para que se convierta en la regla oficial.
+            """, unsafe_allow_html=True)
