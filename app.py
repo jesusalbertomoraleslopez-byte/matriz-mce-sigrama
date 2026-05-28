@@ -122,7 +122,21 @@ if 'personal' not in st.session_state:
     }
 
 if 'areas' not in st.session_state:
-    st.session_state.areas = ["⚙️ Ingenieria", "🔍 Calidad", "📦 Almacen", "✂️ Corte", "📐 Doblez", "🎨 Pintura", "🚚 Embarquez", "🏭 Planta Rio", "🛠️ Lijado"]
+    st.session_state.areas = [
+        "⚙️ Ingenieria", 
+        "🔍 Calidad", 
+        "📦 Almacen", 
+        "✂️ Corte", 
+        "📐 Doblez", 
+        "🎨 Pintura", 
+        "🚚 Embarquez", 
+        "🏭 Planta Rio", 
+        "🛠️ Lijado",
+        "💼 Administracion",      # Nueva área añadida
+        "👥 Recursos Humanos",    # Nueva área añadida
+        "👑 Direccion"            # Nueva área añadida
+    ]
+
 
 
 LISTA_CLASIFICACIONES = ["Acuerdos", "Programa de Actividades", "Actividades Sujeridas", "Dirección", "Problema de Calidad", "Problema de Seguridad", "Lista de Pendientes", "Auto Asignado", "Plan de Control y Monitoreo", "Mejoras", "Investigación", "Manuales", "Procesos"]
