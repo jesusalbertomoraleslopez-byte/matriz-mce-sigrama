@@ -22,17 +22,25 @@ def importar_registros_excel():
         try:
             df = pd.read_excel(ARCHIVO_DB)
             if not df.empty:
+                # CORRECCIÓN DE FECHAS: Detecta formatos datetime extensos y los limpia a texto DD-Mes-YY
                 for col_fecha in ["Fecha Inicio", "Fecha Compromiso"]:
                     if col_fecha in df.columns:
                         def corregir_fecha_serial(val):
                             try:
-                                if pd.isna(val) or str(val).strip() in ["None", "nan", "NaN", ""]: return ""
+                                if pd.isna(val) or str(val).strip() in ["None", "nan", "NaN", ""]: 
+                                    return ""
+                                if isinstance(val, (datetime, pd.Timestamp)):
+                                    return val.strftime("%d-%b-%y")
+                                if " " in str(val):
+                                    val = str(val).split(" ")[0]
                                 if str(val).replace('.0', '').isdigit():
                                     dias = int(str(val).replace('.0', ''))
                                     return (datetime(1899, 12, 30) + timedelta(days=dias)).strftime("%d-%b-%y")
                                 return str(val).strip()
-                            except: return str(val)
+                            except: 
+                                return str(val)
                         df[col_fecha] = df[col_fecha].apply(corregir_fecha_serial)
+
 
                 if "% Avance" in df.columns:
                     if df["% Avance"].max() <= 1.0 and df["% Avance"].max() > 0: df["% Avance"] = df["% Avance"] * 100
@@ -166,19 +174,26 @@ elif opcion_menu == "📋 Tabla de Control":
     if not df_t.empty:
         df_mostrar = df_t[["No", "Origen", "Fecha Inicio", "Prioridad", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso", "Comentario", "Evidencia"]].copy()
         hoy = datetime.now()
+        # REGLA SOLICITADA: Semáforo Amarillo Automático para Avances Diferentes de Cero
         def aplicar_colores_renglon(fila):
             try:
                 num_avance = int(fila["% Avance"])
                 fecha_comp_str = str(fila["Fecha Compromiso"]).strip()
                 fecha_vencida = False
                 if fecha_comp_str:
-                    f_comp = datetime.strptime(fecha_comp_str, "%d-%b-%y")
-                    if f_comp < hoy: fecha_vencida = True
-                if num_avance < 100 and fecha_vencida: return ['background-color: #F8D7DA; color: #721C24; font-weight: 500;'] * len(fila)
-                elif num_avance == 100: return ['background-color: #D4EDDA; color: #155724;'] * len(fila)
-                elif num_avance > 0: return ['background-color: #FFF3CD; color: #856404;'] * len(fila)
+                    try:
+                        f_comp = datetime.strptime(fecha_comp_str, "%d-%b-%y")
+                        if f_comp < hoy: fecha_vencida = True
+                    except: pass
+                if num_avance < 100 and fecha_vencida: 
+                    return ['background-color: #F8D7DA; color: #721C24; font-weight: 500;'] * len(fila)
+                elif num_avance == 100: 
+                    return ['background-color: #D4EDDA; color: #155724;'] * len(fila)
+                elif num_avance > 0: 
+                    return ['background-color: #FFF3CD; color: #856404;'] * len(fila)
             except: pass
             return [''] * len(fila)
+
         st.dataframe(df_mostrar.style.apply(aplicar_colores_renglon, axis=1).format({"% Avance": "{:.0f}%"}), use_container_width=True, hide_index=True)
     else: st.info("No se encontraron registros.")
 elif opcion_menu == "📝 Actualizar Mis Avances":
