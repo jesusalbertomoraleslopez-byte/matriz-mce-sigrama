@@ -196,28 +196,43 @@ elif opcion_menu == "📋 Tabla de Control":
 
         st.dataframe(df_mostrar.style.apply(aplicar_colores_renglon, axis=1).format({"% Avance": "{:.0f}%"}), use_container_width=True, hide_index=True)
     else: st.info("No se encontraron registros.")
-# --- TAB 3: ACTUALIZAR MIS AVANCES (CON FILTROS CORPORATIVOS Y LISTADO EN CASCADA) ---
+
+# --- TAB 3: ACTUALIZAR MIS AVANCES (CON FILTROS CORPORATIVOS, MINI DASHBOARD Y LISTADO EN CASCADA) ---
 elif opcion_menu == "📝 Actualizar Mis Avances":
     st.subheader("Actualización de Avances de Tareas")
     
-    # 1. FILTRO DE PERSONA (Selección del Colaborador)
+    # 1. ENTORNO DE ENCABEZADO: FILTRO DE PERSONA Y MINI DASHBOARD SUPERIOR DERECHA
     u = st.selectbox("Identifícate (Selecciona tu nombre)", list(st.session_state.personal.keys()))
     
-    # Extraemos las actividades exclusivas de este usuario
+    # Extraemos las actividades exclusivas de este usuario para calcular sus métricas individuales
     df_usuario = pd.DataFrame(st.session_state.actividades)
-    df_usuario = df_usuario[df_usuario["Responsable"] == u]
+    if not df_usuario.empty and "Responsable" in df_usuario.columns:
+        df_usuario = df_usuario[df_usuario["Responsable"] == u]
     
     if df_usuario.empty: 
         st.info(f"👤 {u} no tiene actividades pendientes asignadas en este momento.")
     else:
+        # MINI DASHBOARD INCORPORADO EN LA PARTE SUPERIOR (Dividido en columnas limpias)
+        st.markdown('<p style="font-size:16px; font-weight:bold; color:#0C2340; margin-bottom:5px;">📊 Mi Rendimiento Actual</p>', unsafe_allow_html=True)
+        col_dash1, col_dash2, col_dash3 = st.columns(3)
+        
+        tareas_pendientes = len(df_usuario[df_usuario["% Avance"].astype(int) < 100])
+        tareas_hechas = len(df_usuario[df_usuario["% Avance"].astype(int) == 100])
+        promedio_avance = df_usuario["% Avance"].astype(int).mean()
+        
+        col_dash1.metric(label="⏳ En Proceso", value=f"{tareas_pendientes} tareas")
+        col_dash2.metric(label="✅ Terminadas", value=f"{tareas_hechas} tareas")
+        col_dash3.metric(label="📈 Eficiencia Total", value=f"{promedio_avance:.1f}%")
+        st.write("---")
+        
         # 2. FILTRO DE 3 CLASIFICACIONES SOLICITADAS
         clasificacion = st.radio(
-            "Filtrar por estatus de avance:",
+            "Filtrar mi lista por estatus:",
             ["En proceso (0% a 99%)", "Terminadas (100%)", "Ver Todas las Asignadas"],
             horizontal=True
         )
         
-        # Filtramos el DataFrame local según la clasificación seleccionada por el usuario
+        # Filtramos el DataFrame local según la clasificación seleccionada por el operador
         if clasificacion == "En proceso (0% a 99%)":
             df_filtrado = df_usuario[df_usuario["% Avance"].astype(int) < 100]
         elif clasificacion == "Terminadas (100%)":
@@ -300,11 +315,13 @@ elif opcion_menu == "📝 Actualizar Mis Avances":
                                 # Persistencia inmediata en el archivo Excel físico de Planta
                                 try:
                                     st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                                    st.success("🏁 ¡Cambios registrados localmente con éxito!"); st.rerun()
+                                    st.success("🏁 ¡Cambios registrados con éxito!"); st.rerun()
                                 except Exception as e_save: 
                                     st.error(f"Fallo de escritura en base física Excel: {e_save}")
                         st.markdown('</div>', unsafe_allow_html=True)
                     st.markdown('</div>', unsafe_allow_html=True)
+
+
 
 elif opcion_menu == "📥 Cargar Actividades (Usuario)":
     st.subheader("Captura de Nuevas Actividades")
