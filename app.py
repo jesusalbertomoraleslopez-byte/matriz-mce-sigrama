@@ -75,23 +75,33 @@ st.markdown("""
     .card-header { font-size: 20px !important; font-weight: bold; color: #0C2340; margin-bottom: 3px; }
     .card-desc { font-size: 16px !important; font-weight: 500; color: #333333; margin-bottom: 5px; }
         /* CONFIGURACIÓN MÁSTER 3X PARA EL NOMBRE DEL OPERADOR */
+    /* CONFIGURACIÓN MÁSTER PARA EL CONTENEDOR DEL NOMBRE */
     div[data-testid="stSelectbox"] div[data-baseweb="select"] {
         font-size: 42px !important; 
         font-weight: 800 !important; 
         color: #0C2340 !important;  
-        height: 75px !important;    
+        height: 85px !important; /* Aumentamos el alto para que quepa todo el texto */
+        min-height: 85px !important;
         display: flex !important;
         align-items: center !important;
     }
     
-    div[data-testid="stSelectbox"] [data-testid="stSelectbox-SingleValue"] {
-        line-height: 75px !important;
+    /* Forza al texto seleccionado a centrarse y ocupar todo el espacio vertical sin cortarse */
+    div[data-testid="stSelectbox"] [data-testid="stSelectbox-SingleValue"],
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] span {
+        line-height: 85px !important;
+        font-size: 42px !important;
+        overflow: visible !important; /* Evita que el texto se oculte en los bordes */
     }
 
+    /* Calibración de la lista que se despliega al dar clic */
     div[data-baseweb="popover"] ul li {
         font-size: 32px !important;
-        padding-top: 10px !important;
-        padding-bottom: 10px !important;
+        padding-top: 12px !important;
+        padding-bottom: 12px !important;
+        line-height: 1.2 !important;
+    }
+ padding-bottom: 10px !important;
     }
     </style>
 """, unsafe_allow_html=True)
