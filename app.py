@@ -244,7 +244,8 @@ elif opcion_menu == "📋 Tabla de Control":
             
             for col in worksheet.columns:
                 max_len = max(len(str(cell.value or '')) for cell in col)
-                col_letter = col.column_letter
+                # CAMBIO AQUÍ: Agregamos [0] a col
+                col_letter = col[0].column_letter
                 worksheet.column_dimensions[col_letter].width = max(max_len + 3, 12)
                 
             from openpyxl.styles import PatternFill, Font
