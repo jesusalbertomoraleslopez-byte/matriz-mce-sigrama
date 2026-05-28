@@ -196,54 +196,116 @@ elif opcion_menu == "📋 Tabla de Control":
 
         st.dataframe(df_mostrar.style.apply(aplicar_colores_renglon, axis=1).format({"% Avance": "{:.0f}%"}), use_container_width=True, hide_index=True)
     else: st.info("No se encontraron registros.")
+# --- TAB 3: ACTUALIZAR MIS AVANCES (CON FILTROS CORPORATIVOS Y LISTADO EN CASCADA) ---
 elif opcion_menu == "📝 Actualizar Mis Avances":
     st.subheader("Actualización de Avances de Tareas")
-    u = st.selectbox("Identifícate", list(st.session_state.personal.keys()))
-    df_usuario = st.session_state.actividades[st.session_state.actividades["Responsable"] == u]
-    if df_usuario.empty: st.info("No tienes actividades pendientes.")
+    
+    # 1. FILTRO DE PERSONA (Selección del Colaborador)
+    u = st.selectbox("Identifícate (Selecciona tu nombre)", list(st.session_state.personal.keys()))
+    
+    # Extraemos las actividades exclusivas de este usuario
+    df_usuario = pd.DataFrame(st.session_state.actividades)
+    df_usuario = df_usuario[df_usuario["Responsable"] == u]
+    
+    if df_usuario.empty: 
+        st.info(f"👤 {u} no tiene actividades pendientes asignadas en este momento.")
     else:
-        for idx in df_usuario.index:
-            r = st.session_state.actividades.loc[idx]
-            with st.container():
-                st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.markdown(f'<p class="card-header">Actividad No. {r["No"]} | {r["Area"]}</p>', unsafe_allow_html=True)
-                st.markdown(f'<p class="card-desc"><b>Descripción:</b> {r["Descripcion"]}</p>', unsafe_allow_html=True)
-                col_izq, col_der = st.columns(2)
-                with col_izq:
-                    progreso_actual = int(r['% Avance'])
-                    fig_slider = graph_objects.Figure()
-                    fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[100], marker_color="#E0E0E0", showlegend=False, hoverinfo="none"))
-                    fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[progreso_actual], marker_color="#2ECC71" if progreso_actual == 100 else "#0C2340", showlegend=False, text=f"{progreso_actual}%", textposition="inside"))
-                    fig_slider.update_layout(barmode="overlay", template="plotly_white", height=140, width=90, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(visible=False), yaxis=dict(range=[0, 100], visible=False))
-                    st.plotly_chart(fig_slider, use_container_width=False, config={'displayModeBar': False}, key=f"plot_chart_{r['No']}")
-                    nv_av = st.slider("Ajustar %:", min_value=0, max_value=100, value=progreso_actual, step=5, key=f"num_{r['No']}")
-                with col_der:
-                    nv_co = st.text_input("Comentarios de bitácora:", str(r['Comentario']), key=f"c_{r['No']}")
-                    evidencia_guardada = str(r['Evidencia']).strip()
-                    if evidencia_guardada and os.path.exists(evidencia_guardada): 
-                        st.image(Image.open(evidencia_guardada), width=150)
-                    foto = st.file_uploader("Subir Evidencia (Cierre 100%):", type=["jpg","png","jpeg"], key=f"i_{r['No']}") if nv_av == 100 else None
-                    if st.button("Guardar Tarea", key=f"b_{r['No']}"):
-                        if nv_av == 100 and not foto and not evidencia_guardada: 
-                            st.error("Falta la foto.")
-                        else:
-                            ruta_foto_final = evidencia_guardada
-                            if foto is not None:
+        # 2. FILTRO DE 3 CLASIFICACIONES SOLICITADAS
+        clasificacion = st.radio(
+            "Filtrar por estatus de avance:",
+            ["En proceso (0% a 99%)", "Terminadas (100%)", "Ver Todas las Asignadas"],
+            horizontal=True
+        )
+        
+        # Filtramos el DataFrame local según la clasificación seleccionada por el usuario
+        if clasificacion == "En proceso (0% a 99%)":
+            df_filtrado = df_usuario[df_usuario["% Avance"].astype(int) < 100]
+        elif clasificacion == "Terminadas (100%)":
+            df_filtrado = df_usuario[df_usuario["% Avance"].astype(int) == 100]
+        else:
+            df_filtrado = df_usuario.copy()
+            
+        st.write("---")
+        
+        if df_filtrado.empty:
+            st.info(f"📋 No hay tareas en la clasificación '{clasificacion}' para {u}.")
+        else:
+            # 3. FORMATO DE LISTA VERTICAL EN CASCADA COMPACTA
+            for idx in df_filtrado.index:
+                r = st.session_state.actividades.loc[idx]
+                
+                # Contenedor visual tipo lista minimalista para planta
+                with st.container():
+                    st.markdown('<div class="card">', unsafe_allow_html=True)
+                    
+                    # Encabezado compacto en una sola línea
+                    st.markdown(f'<p class="card-header">📋 Actividad No. {r["No"]} | {r["Area"]} | Prioridad: {r["Prioridad"]}</p>', unsafe_allow_html=True)
+                    st.markdown(f'<p class="card-desc" style="font-size:15px; margin-bottom:15px;"><b>Descripción:</b> {r["Descripcion"]}</p>', unsafe_allow_html=True)
+                    
+                    col_izq, col_der = st.columns(2)
+                    
+                    with col_izq:
+                        progreso_actual = int(r['% Avance'])
+                        
+                        # Renderizado del medidor de barra vertical
+                        fig_slider = graph_objects.Figure()
+                        fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[100], marker_color="#E0E0E0", showlegend=False, hoverinfo="none"))
+                        color_barra = "#2ECC71" if progreso_actual == 100 else "#0C2340"
+                        fig_slider.add_trace(graph_objects.Bar(x=["Progreso"], y=[progreso_actual], marker_color=color_barra, showlegend=False, text=f"{progreso_actual}%", textposition="inside", textfont=dict(size=14, color="white")))
+                        fig_slider.update_layout(barmode="overlay", template="plotly_white", height=140, width=90, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(visible=False), yaxis=dict(range=[0, 100], showgrid=False, zeroline=False, visible=False))
+                        st.plotly_chart(fig_slider, use_container_width=False, config={'displayModeBar': False}, key=f"plot_chart_{r['No']}")
+                        
+                        # Deslizador interactivo alineado a la lista
+                        nv_av = st.slider("Ajustar %:", min_value=0, max_value=100, value=progreso_actual, step=5, key=f"num_{r['No']}")
+                    
+                    with col_der:
+                        # Control de comentarios limpiando textos vacíos o nulos 'nan'
+                        comentario_limpio = "" if str(r['Comentario']).strip().lower() in ["nan", "none", ""] else str(r['Comentario'])
+                        nv_co = st.text_input("Comentarios de bitácora:", value=comentario_limpio, key=f"c_{r['No']}")
+                        
+                        # Despliegue de evidencia previa si existe
+                        evidencia_guardada = str(r['Evidencia']).strip()
+                        if evidencia_guardada and os.path.exists(evidencia_guardada):
+                            st.image(Image.open(evidencia_guardada), width=130, caption="📸 Evidencia Actual")
+                        
+                        # Carga de fotos obligatoria al marcar 100%
+                        foto = st.file_uploader("Evidencia Fotográfica (Cierre 100%):", type=["jpg","png","jpeg","jfif"], key=f"i_{r['No']}") if nv_av == 100 else None
+                        if foto: 
+                            st.image(Image.open(foto), width=100, caption="Vista Previa")
+                        
+                        st.markdown('<div style="margin-top: 10px;">', unsafe_allow_html=True)
+                        if st.button("Guardar Tarea", key=f"b_{r['No']}", use_container_width=True):
+                            if nv_av == 100 and not foto and not evidencia_guardada: 
+                                st.error("⚠️ Faltan las fotografías físicas obligatorias para autorizar el cierre al 100%.")
+                            else:
+                                ruta_foto_final = evidencia_guardada
+                                if foto is not None:
+                                    try:
+                                        img_abierta = Image.open(foto)
+                                        if img_abierta.mode in ("RGBA", "P"): 
+                                            img_abierta = img_abierta.convert("RGB")
+                                        img_abierta.thumbnail((800, 600), Image.Resampling.LANCZOS)
+                                        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                        nombre_archivo_final = f"MCE-{int(r['No']):03d}_evidencia_{stamp}.jpg"
+                                        ruta_foto_final = os.path.join(CARPETA_EVIDENCIAS, nombre_archivo_final)
+                                        img_abierta.save(ruta_foto_final, "JPEG", quality=65)
+                                    except Exception as err_img: 
+                                        st.error(f"Fallo al procesar captura: {err_img}")
+                                
+                                # Inyección en caliente en el DataFrame virtual de sesión
+                                st.session_state.actividades.loc[idx, "% Avance"] = int(nv_av)
+                                st.session_state.actividades.loc[idx, "Comentario"] = str(nv_co)
+                                st.session_state.actividades.loc[idx, "Evidencia"] = str(ruta_foto_final)
+                                
+                                # Persistencia inmediata en el archivo Excel físico de Planta
                                 try:
-                                    img = Image.open(foto)
-                                    if img.mode in ("RGBA", "P"): img = img.convert("RGB")
-                                    img.thumbnail((800, 600), Image.Resampling.LANCZOS)
-                                    ruta_foto_final = os.path.join(CARPETA_EVIDENCIAS, f"MCE-{int(r['No']):03d}_evidencia.jpg")
-                                    img.save(ruta_foto_final, "JPEG", quality=65)
-                                except Exception as e_img: st.error(f"Error imagen: {e_img}")
-                            st.session_state.actividades.loc[idx, "% Avance"] = int(nv_av)
-                            st.session_state.actividades.loc[idx, "Comentario"] = str(nv_co)
-                            st.session_state.actividades.loc[idx, "Evidencia"] = str(ruta_foto_final)
-                            try:
-                                st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                                st.success("¡Guardado!"); st.rerun()
-                            except Exception as e_save: st.error(f"Fallo Excel: {e_save}")
-                st.markdown('</div>', unsafe_allow_html=True)
+                                    st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
+                                    st.success("🏁 ¡Cambios registrados localmente con éxito!"); st.rerun()
+                                except Exception as e_save: 
+                                    st.error(f"Fallo de escritura en base física Excel: {e_save}")
+                        st.markdown('</div>', unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+
 elif opcion_menu == "📥 Cargar Actividades (Usuario)":
     st.subheader("Captura de Nuevas Actividades")
     if st.text_input("Contraseña de Usuario:", type="password", key="pwd_carga_usr") == "Metales":
