@@ -74,9 +74,28 @@ st.markdown("""
     .main-title { font-size:28px !important; font-weight: bold; color: #0C2340; text-align: left; margin-top: 0px; }
     .card-header { font-size: 20px !important; font-weight: bold; color: #0C2340; margin-bottom: 3px; }
     .card-desc { font-size: 16px !important; font-weight: 500; color: #333333; margin-bottom: 5px; }
-    .card { padding: 12px 18px; border-radius: 8px; box-shadow: 0px 2px 4px rgba(0,0,0,0.05); background-color: #FFFFFF; margin-bottom: 10px; border: 1px solid #E0E0E0; }
+        /* CONFIGURACIÓN MÁSTER 3X PARA EL NOMBRE DEL OPERADOR */
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] {
+        font-size: 42px !important; 
+        font-weight: 800 !important; 
+        color: #0C2340 !important;  
+        height: 75px !important;    
+        display: flex !important;
+        align-items: center !important;
+    }
+    
+    div[data-testid="stSelectbox"] [data-testid="stSelectbox-SingleValue"] {
+        line-height: 75px !important;
+    }
+
+    div[data-baseweb="popover"] ul li {
+        font-size: 32px !important;
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
+    }
     </style>
 """, unsafe_allow_html=True)
+
 if 'personal' not in st.session_state:
     st.session_state.personal = {
         "Jesus Morales": None, "Ing. Alfredo Hdz": None, "Ing. Lorena Hdz": None, "Jesús Alday": None,
