@@ -115,10 +115,10 @@ st.markdown("""
 
 if 'personal' not in st.session_state:
     st.session_state.personal = {
-        "Jesus Morales": None, "Ing. Alfredo Hdz": None, "Ing. Lorena Hdz": None,
+        "Jesus Morales": None, "Cruz Carreon": None, "Luis Quintana": None, "Bryan Flores": None, "Rodolfo Ferndez M": None,"Ing. Alfredo Hdz": None, "Ing. Lorena Hdz": None,
         "Alejandra Arellano": None, "Jose Romo": None, "Jose Manuel Aldama": None, "Fernando Llanas": None,
-        "Celso": None, "Cruz Carreon": None, "Luis Quintana": None, "Bryan Flores": None,
-        "Jorge Sanchez": None, "Voctor Montoya": None, "Rodolfo Ferndez M": None
+        "Celso": None,  "Josue Mesta": None
+        "Jorge Sanchez": None, "Voctor Montoya": None
     }
 
 if 'areas' not in st.session_state:
