@@ -684,7 +684,7 @@ elif opcion_menu == "📋 Reportes PDF":
                 pdf.set_font("Helvetica", "B", 12)
                 pdf.cell(0, 8, txt="REPORTE DE MATRIZ DE COMUNICACIÓN EFECTIVA", ln=True, align="C")
                 
-                # Subtítulo de filtros aplicados (Limpieza rápida de texto para evitar bugs en el título)
+                # Subtítulo de filtros aplicados
                 area_txt_limpio = "".join(c for c in str(area_txt) if c.isalnum() or c.isspace()).strip()
                 resp_txt_limpio = str(resp_txt).encode('latin-1', 'ignore').decode('latin-1')
                 tiempo_txt_limpio = str(tiempo_txt).encode('latin-1', 'ignore').decode('latin-1')
@@ -700,40 +700,55 @@ elif opcion_menu == "📋 Reportes PDF":
                 pdf.line(10, pdf.get_y(), 285, pdf.get_y())
                 pdf.ln(5)
                 
-                # Tabla: Encabezados (Gris #CFD8DC)
-                pdf.set_font("Helvetica", "B", 10)
-                pdf.set_fill_color(207, 216, 220)
-                pdf.set_text_color(12, 35, 64)
+                # --- AGRUPACIÓN AUTOMÁTICA POR ÁREA ---
+                # Agrupamos el DataFrame original por la columna de Area
+                areas_agrupadas = df_datos.groupby("Area")
                 
-                pdf.cell(15, 8, txt="No", border=1, fill=True, align="C")
-                pdf.cell(35, 8, txt="Área", border=1, fill=True)
-                pdf.cell(45, 8, txt="Responsable", border=1, fill=True)
-                pdf.cell(125, 8, txt="Descripción del Pendiente", border=1, fill=True)
-                pdf.cell(20, 8, txt="Avance", border=1, fill=True, align="C")
-                pdf.cell(35, 8, txt="F. Límite", border=1, fill=True, ln=True)
-                
-                # Tabla: Filas de datos (Color de fondo amarillo tenue #FFF3CD para alertas)
-                pdf.set_font("Helvetica", "", 9)
-                pdf.set_text_color(0, 0, 0)
-                
-                for _, fila in df_datos.iterrows():
-                    desc_corta = str(fila["Descripcion"])
-                    if len(desc_corta) > 75:
-                        desc_corta = desc_corta[:72] + "..."
-                        
-                    # 🔧 LIMPIEZA ANTIBUGS: Filtra solo letras, números y espacios para evitar el error de la fuente
-                    area_limpia = "".join(c for c in str(fila["Area"]) if c.isalnum() or c.isspace()).strip()
-                    resp_limpio = str(fila["Responsable"]).encode('latin-1', 'ignore').decode('latin-1')
-                    desc_corta = desc_corta.encode('latin-1', 'ignore').decode('latin-1')
-                        
-                    pdf.set_fill_color(255, 243, 205)
+                for area_nombre, grupo_actividades in areas_agrupadas:
+                    # Limpieza del nombre del área para quitar emojis antes de escribir en el PDF
+                    area_nombre_limpio = "".join(c for c in str(area_nombre) if c.isalnum() or c.isspace()).strip()
                     
-                    pdf.cell(15, 7, txt=str(fila["No"]), border=1, align="C")
-                    pdf.cell(35, 7, txt=area_limpia[:18], border=1)
-                    pdf.cell(45, 7, txt=resp_limpio[:22], border=1)
-                    pdf.cell(125, 7, txt=desc_corta, border=1)
-                    pdf.cell(20, 7, txt=f"{fila['% Avance']}%", border=1, fill=True, align="C")
-                    pdf.cell(35, 7, txt=str(fila["Fecha Compromiso"]), border=1, ln=True)
+                    # Título de la Sección del Área (Ej: "ÁREA: TRATAMIENTO")
+                    pdf.ln(4)
+                    pdf.set_font("Helvetica", "B", 11)
+                    pdf.set_text_color(12, 35, 64)
+                    pdf.cell(0, 6, txt=f">> ÁREA: {area_nombre_limpio.upper()}", ln=True)
+                    pdf.ln(2)
+                    
+                    # Tabla: Encabezados de Columnas (Gris #CFD8DC)
+                    pdf.set_font("Helvetica", "B", 9.5)
+                    pdf.set_fill_color(207, 216, 220)
+                    pdf.set_text_color(12, 35, 64)
+                    
+                    pdf.cell(15, 7, txt="No", border=1, fill=True, align="C")
+                    pdf.cell(50, 7, txt="Responsable", border=1, fill=True)
+                    pdf.cell(145, 7, txt="Descripción del Pendiente", border=1, fill=True)
+                    pdf.cell(25, 7, txt="Avance", border=1, fill=True, align="C")
+                    pdf.cell(40, 7, txt="Fecha Límite", border=1, fill=True, ln=True)
+                    
+                    # Tabla: Filas de datos de las tareas pertenecientes a esta área
+                    pdf.set_font("Helvetica", "", 9)
+                    pdf.set_text_color(0, 0, 0)
+                    
+                    for _, fila in grupo_actividades.iterrows():
+                        desc_corta = str(fila["Descripcion"])
+                        if len(desc_corta) > 85:
+                            desc_corta = desc_corta[:82] + "..."
+                            
+                        # Limpieza de caracteres raros o acentos conflictivos
+                        resp_limpio = str(fila["Responsable"]).encode('latin-1', 'ignore').decode('latin-1')
+                        desc_corta = desc_corta.encode('latin-1', 'ignore').decode('latin-1')
+                            
+                        # Fondo amarillo tenue para las actividades pendientes
+                        pdf.set_fill_color(255, 243, 205)
+                        
+                        pdf.cell(15, 6.5, txt=str(fila["No"]), border=1, align="C")
+                        pdf.cell(50, 6.5, txt=resp_limpio[:25], border=1)
+                        pdf.cell(145, 6.5, txt=desc_corta, border=1)
+                        pdf.cell(25, 6.5, txt=f"{fila['% Avance']}%", border=1, fill=True, align="C")
+                        pdf.cell(40, 6.5, txt=str(fila["Fecha Compromiso"]), border=1, ln=True)
+                    
+                    pdf.ln(3) # Espacio de separación antes de colocar la siguiente área
                     
                 return pdf.output()
 
@@ -741,9 +756,9 @@ elif opcion_menu == "📋 Reportes PDF":
             try:
                 pdf_datos_bytes = creador_documento_pdf(df_pendientes_rep, area_rep, resp_rep, rango_tiempo)
                 st.download_button(
-                    label="📄 Imprimir Reporte en PDF",
+                    label="📄 Imprimir Reporte en PDF (Separado por Área)",
                     data=bytes(pdf_datos_bytes),
-                    file_name=f"Reporte_MCE_{datetime.now().strftime('%d-%b-%y')}.pdf",
+                    file_name=f"Reporte_MCE_Por_Area_{datetime.now().strftime('%d-%b-%y')}.pdf",
                     mime="application/pdf",
                     use_container_width=True
                 )
