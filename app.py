@@ -615,8 +615,6 @@ elif opcion_menu == "👑 Reglas de Liderazgo":
 
 ### R E P O R T E S   P D F ####  
 
-
-
 elif opcion_menu == "📋 Reportes PDF":
     st.subheader("🛠️ Generación de Reportes Ejecutivos")
     st.write("Selecciona los filtros requeridos para estructurar el reporte de actividades pendientes:")
@@ -686,10 +684,14 @@ elif opcion_menu == "📋 Reportes PDF":
                 pdf.set_font("Helvetica", "B", 12)
                 pdf.cell(0, 8, txt="REPORTE DE MATRIZ DE COMUNICACIÓN EFECTIVA", ln=True, align="C")
                 
-                # Subtítulo de filtros aplicados
+                # Subtítulo de filtros aplicados (Limpieza rápida de texto para evitar bugs en el título)
+                area_txt_limpio = "".join(c for c in str(area_txt) if c.isalnum() or c.isspace()).strip()
+                resp_txt_limpio = str(resp_txt).encode('latin-1', 'ignore').decode('latin-1')
+                tiempo_txt_limpio = str(tiempo_txt).encode('latin-1', 'ignore').decode('latin-1')
+                
                 pdf.set_font("Helvetica", "I", 9)
                 pdf.set_text_color(80, 80, 80)
-                pdf.cell(0, 5, txt=f"Filtros: Area ({area_txt}) | Responsable ({resp_txt}) | Periodo ({tiempo_txt})", ln=True, align="C")
+                pdf.cell(0, 5, txt=f"Filtros: Area ({area_txt_limpio}) | Responsable ({resp_txt_limpio}) | Periodo ({tiempo_txt_limpio})", ln=True, align="C")
                 pdf.cell(0, 5, txt=f"Generado el: {datetime.now().strftime('%d-%b-%y %H:%M')}", ln=True, align="C")
                 pdf.ln(5)
                 
@@ -719,11 +721,16 @@ elif opcion_menu == "📋 Reportes PDF":
                     if len(desc_corta) > 75:
                         desc_corta = desc_corta[:72] + "..."
                         
+                    # 🔧 LIMPIEZA ANTIBUGS: Filtra solo letras, números y espacios para evitar el error de la fuente
+                    area_limpia = "".join(c for c in str(fila["Area"]) if c.isalnum() or c.isspace()).strip()
+                    resp_limpio = str(fila["Responsable"]).encode('latin-1', 'ignore').decode('latin-1')
+                    desc_corta = desc_corta.encode('latin-1', 'ignore').decode('latin-1')
+                        
                     pdf.set_fill_color(255, 243, 205)
                     
                     pdf.cell(15, 7, txt=str(fila["No"]), border=1, align="C")
-                    pdf.cell(35, 7, txt=str(fila["Area"])[:18], border=1)
-                    pdf.cell(45, 7, txt=str(fila["Responsable"])[:22], border=1)
+                    pdf.cell(35, 7, txt=area_limpia[:18], border=1)
+                    pdf.cell(45, 7, txt=resp_limpio[:22], border=1)
                     pdf.cell(125, 7, txt=desc_corta, border=1)
                     pdf.cell(20, 7, txt=f"{fila['% Avance']}%", border=1, fill=True, align="C")
                     pdf.cell(35, 7, txt=str(fila["Fecha Compromiso"]), border=1, ln=True)
