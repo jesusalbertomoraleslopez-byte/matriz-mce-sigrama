@@ -613,12 +613,16 @@ elif opcion_menu == "👑 Reglas de Liderazgo":
             """, unsafe_allow_html=True)
 
 
+### R E P O R T E S   P D F ####  
+
+
+
 elif opcion_menu == "📋 Reportes PDF":
     st.subheader("🛠️ Generación de Reportes Ejecutivos")
     st.write("Selecciona los filtros requeridos para estructurar el reporte de actividades pendientes:")
     st.write("---")
     
-    # 1. Configuración de Filtros Avanzados (Se añade filtro de tiempo)
+    # 1. Configuración de Filtros Avanzados
     col_rep1, col_rep2, col_rep3 = st.columns(3)
     with col_rep1: 
         area_rep = st.selectbox("Filtrar por Área", ["Todas"] + st.session_state.areas, key="pdf_area")
@@ -634,53 +638,110 @@ elif opcion_menu == "📋 Reportes PDF":
     # 2. Motor de Filtrado de Datos Virtual
     df_rep = pd.DataFrame(st.session_state.actividades)
     if not df_rep.empty:
-        # Filtro de Área
         if area_rep != "Todas": 
             df_rep = df_rep[df_rep["Area"] == area_rep]
-        # Filtro de Responsable
         if resp_rep != "Todos": 
             df_rep = df_rep[df_rep["Responsable"] == resp_rep]
             
-        # Filtrar de forma automática para mostrar solo pendientes (avance menor a 100%)
         df_pendientes_rep = df_rep[df_rep["% Avance"].astype(int) < 100].copy()
         
-        # 3. FILTRO TEMPORAL INTELIGENTE (Fecha Compromiso)
         if rango_tiempo != "Cualquier Fecha Límite" and not df_pendientes_rep.empty:
             hoy = datetime.now().date()
-            
-            # Calcular los días límite según la opción seleccionada
-            if rango_tiempo == "Esta Semana":
-                dias_limite = 7
-            elif rango_tiempo == "Próximas 2 Semanas":
-                dias_limite = 14
-            elif rango_tiempo == "Próximas 3 Semanas":
-                dias_limite = 21
-            elif rango_tiempo == "Próximas 4 Semanas":
-                dias_limite = 28
+            if rango_tiempo == "Esta Semana": dias_limite = 7
+            elif rango_tiempo == "Próximas 2 Semanas": dias_limite = 14
+            elif rango_tiempo == "Próximas 3 Semanas": dias_limite = 21
+            elif rango_tiempo == "Próximas 4 Semanas": dias_limite = 28
                 
             fecha_maxima = hoy + timedelta(days=dias_limite)
             
-            # Función segura para convertir el texto "dd-MMM-yy" a una fecha comparable
             def evaluar_rango_fecha(fecha_str):
                 try:
-                    if not fecha_str or str(fecha_str).strip() in ["None", "nan", ""]:
-                        return False
-                    # Convierte el formato de tu base (ej. "15-Jun-26") a fecha real
+                    if not fecha_str or str(fecha_str).strip() in ["None", "nan", ""]: return False
                     f_dt = datetime.strptime(str(fecha_str).strip(), "%d-%b-%y").date()
-                    # Mantiene las tareas vencidas anteriores a hoy y las que entran en las semanas límite
                     return f_dt <= fecha_maxima
-                except:
-                    return False # Si la fecha tiene un formato roto, no la incluye por seguridad
+                except: return False
                     
-            # Aplicar la máscara de filtrado de tiempo
             mascara_fechas = df_pendientes_rep["Fecha Compromiso"].apply(evaluar_rango_fecha)
             df_pendientes_rep = df_pendientes_rep[mascara_fechas]
         
-        # 4. Vista Previa en Pantalla
+        # 3. Vista Previa en Pantalla
         st.write("### 📊 Vista Previa de Actividades Pendientes")
         if not df_pendientes_rep.empty:
             st.metric("Total de Tareas Pendientes encontradas", len(df_pendientes_rep))
             st.dataframe(df_pendientes_rep[["No", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso"]], use_container_width=True, hide_index=True)
+            st.write("---")
+            
+            # --- MOTOR INTERNO DE IMPRESIÓN PDF ---
+            def creador_documento_pdf(df_datos, area_txt, resp_txt, tiempo_txt):
+                from fpdf import FPDF
+                # Diseño en Horizontal (Landscape) para un formato tipo Matriz
+                pdf = FPDF(orientation="L", unit="mm", format="A4")
+                pdf.set_auto_page_break(auto=True, margin=15)
+                pdf.add_page()
+                
+                # Encabezado principal (Azul marino corporativo #0C2340)
+                pdf.set_font("Helvetica", "B", 16)
+                pdf.set_text_color(12, 35, 64)
+                pdf.cell(0, 10, txt="PLANTA METALES Y MAQUINADOS", ln=True, align="C")
+                pdf.set_font("Helvetica", "B", 12)
+                pdf.cell(0, 8, txt="REPORTE DE MATRIZ DE COMUNICACIÓN EFECTIVA", ln=True, align="C")
+                
+                # Subtítulo de filtros aplicados
+                pdf.set_font("Helvetica", "I", 9)
+                pdf.set_text_color(80, 80, 80)
+                pdf.cell(0, 5, txt=f"Filtros: Area ({area_txt}) | Responsable ({resp_txt}) | Periodo ({tiempo_txt})", ln=True, align="C")
+                pdf.cell(0, 5, txt=f"Generado el: {datetime.now().strftime('%d-%b-%y %H:%M')}", ln=True, align="C")
+                pdf.ln(5)
+                
+                # Línea divisoria azul
+                pdf.set_draw_color(12, 35, 64)
+                pdf.line(10, pdf.get_y(), 285, pdf.get_y())
+                pdf.ln(5)
+                
+                # Tabla: Encabezados (Gris #CFD8DC)
+                pdf.set_font("Helvetica", "B", 10)
+                pdf.set_fill_color(207, 216, 220)
+                pdf.set_text_color(12, 35, 64)
+                
+                pdf.cell(15, 8, txt="No", border=1, fill=True, align="C")
+                pdf.cell(35, 8, txt="Área", border=1, fill=True)
+                pdf.cell(45, 8, txt="Responsable", border=1, fill=True)
+                pdf.cell(125, 8, txt="Descripción del Pendiente", border=1, fill=True)
+                pdf.cell(20, 8, txt="Avance", border=1, fill=True, align="C")
+                pdf.cell(35, 8, txt="F. Límite", border=1, fill=True, ln=True)
+                
+                # Tabla: Filas de datos (Color de fondo amarillo tenue #FFF3CD para alertas)
+                pdf.set_font("Helvetica", "", 9)
+                pdf.set_text_color(0, 0, 0)
+                
+                for _, fila in df_datos.iterrows():
+                    desc_corta = str(fila["Descripcion"])
+                    if len(desc_corta) > 75:
+                        desc_corta = desc_corta[:72] + "..."
+                        
+                    pdf.set_fill_color(255, 243, 205)
+                    
+                    pdf.cell(15, 7, txt=str(fila["No"]), border=1, align="C")
+                    pdf.cell(35, 7, txt=str(fila["Area"])[:18], border=1)
+                    pdf.cell(45, 7, txt=str(fila["Responsable"])[:22], border=1)
+                    pdf.cell(125, 7, txt=desc_corta, border=1)
+                    pdf.cell(20, 7, txt=f"{fila['% Avance']}%", border=1, fill=True, align="C")
+                    pdf.cell(35, 7, txt=str(fila["Fecha Compromiso"]), border=1, ln=True)
+                    
+                return pdf.output()
+
+            # --- BOTÓN DE INTERFAZ STREAMLIT ---
+            try:
+                pdf_datos_bytes = creador_documento_pdf(df_pendientes_rep, area_rep, resp_rep, rango_tiempo)
+                st.download_button(
+                    label="📄 Imprimir Reporte en PDF",
+                    data=bytes(pdf_datos_bytes),
+                    file_name=f"Reporte_MCE_{datetime.now().strftime('%d-%b-%y')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+            except Exception as error_pdf:
+                st.error(f"Error al generar el archivo de impresión: {error_pdf}")
         else:
             st.success("🎉 ¡Sin pendientes! No hay actividades retrasadas o en proceso en el rango de tiempo seleccionado.")
     else:
