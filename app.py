@@ -615,4 +615,34 @@ elif opcion_menu == "👑 Reglas de Liderazgo":
 
 elif opcion_menu == "📋 Reportes PDF":
     st.subheader("🛠️ Generación de Reportes Ejecutivos")
-    st.write("Esta sección está lista para recibir el motor de reportes en PDF de la planta.")
+    st.write("Selecciona los filtros requeridos para estructurar el reporte de actividades pendientes:")
+    st.write("---")
+    
+    # 1. Configuración de Filtros en Columnas
+    col_rep1, col_rep2 = st.columns(2)
+    with col_rep1: 
+        area_rep = st.selectbox("Filtrar Reporte por Área", ["Todas"] + st.session_state.areas, key="pdf_area")
+    with col_rep2: 
+        resp_rep = st.selectbox("Filtrar Reporte por Responsable", ["Todos"] + list(st.session_state.personal.keys()), key="pdf_resp")
+        
+    # 2. Motor de Filtrado de Datos Virtual
+    df_rep = pd.DataFrame(st.session_state.actividades)
+    if not df_rep.empty:
+        if area_rep != "Todas": 
+            df_rep = df_rep[df_rep["Area"] == area_rep]
+        if resp_rep != "Todos": 
+            df_rep = df_rep[df_rep["Responsable"] == resp_rep]
+            
+        # Filtrar de forma automática para mostrar solo pendientes (avance menor a 100%)
+        df_pendientes_rep = df_rep[df_rep["% Avance"].astype(int) < 100]
+        
+        # 3. Vista Previa en Pantalla
+        st.write("### 📊 Vista Previa de Actividades Pendientes")
+        if not df_pendientes_rep.empty:
+            st.metric("Total de Tareas Pendientes en este Filtor", len(df_pendientes_rep))
+            st.dataframe(df_pendientes_rep[["No", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso"]], use_container_width=True, hide_index=True)
+        else:
+            st.success("🎉 ¡Sin pendientes! No hay actividades retrasadas o en proceso con los filtros seleccionados.")
+    else:
+        st.info("La base de datos se encuentra vacía.")
+
