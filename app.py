@@ -172,7 +172,8 @@ else:
 
 
 
-opcion_menu = st.sidebar.radio("Navegación", ["📊 Dashboard Principal", "📋 Tabla de Control", "📝 Actualizar Mis Avances", "📥 Cargar Actividades (Usuario)", "🔐 Panel Administrador", "👑 Reglas de Liderazgo"])
+opcion_menu = st.sidebar.radio("Navegación", ["📊 Dashboard Principal", "📋 Tabla de Control", "📝 Actualizar Mis Avances", "📥 Cargar Actividades (Usuario)", "🔐 Panel Administrador", "👑 Reglas de Liderazgo", "📋 Reportes PDF"])
+
 
 if opcion_menu == "📊 Dashboard Principal":
     col_f1, col_f2 = st.columns(2)
@@ -565,6 +566,7 @@ elif opcion_menu == "🔐 Panel Administrador":
                     except Exception as e_b: st.error(f"Error: {e_b}")
 
 # --- NUEVA SECCIÓN: REGLAS DE LIDERAZGO ---
+
 elif opcion_menu == "👑 Reglas de Liderazgo":
     st.markdown('<h2 style="color: #0C2340; font-weight: bold; margin-bottom: 20px;">👑 REGLAS DE LIDERAZGO: PLANTA METALES</h2>', unsafe_allow_html=True)
     st.write("Guía oficial de comportamiento, gestión y control en piso de producción.")
@@ -609,3 +611,8 @@ elif opcion_menu == "👑 Reglas de Liderazgo":
             4. **Asume la responsabilidad final:** Si tu equipo falla, tú eres el responsable ante la Dirección; no culpes a tus subordinados.
             5. **Estandariza los éxitos:** Cuando una solución funcione, documenta el nuevo método para que se convierta en la regla oficial.
             """, unsafe_allow_html=True)
+
+
+elif opcion_menu == "📋 Reportes PDF":
+    st.subheader("🛠️ Generación de Reportes Ejecutivos")
+    st.write("Esta sección está lista para recibir el motor de reportes en PDF de la planta.")
