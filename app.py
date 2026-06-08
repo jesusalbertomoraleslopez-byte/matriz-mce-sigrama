@@ -618,31 +618,70 @@ elif opcion_menu == "📋 Reportes PDF":
     st.write("Selecciona los filtros requeridos para estructurar el reporte de actividades pendientes:")
     st.write("---")
     
-    # 1. Configuración de Filtros en Columnas
-    col_rep1, col_rep2 = st.columns(2)
+    # 1. Configuración de Filtros Avanzados (Se añade filtro de tiempo)
+    col_rep1, col_rep2, col_rep3 = st.columns(3)
     with col_rep1: 
-        area_rep = st.selectbox("Filtrar Reporte por Área", ["Todas"] + st.session_state.areas, key="pdf_area")
+        area_rep = st.selectbox("Filtrar por Área", ["Todas"] + st.session_state.areas, key="pdf_area")
     with col_rep2: 
-        resp_rep = st.selectbox("Filtrar Reporte por Responsable", ["Todos"] + list(st.session_state.personal.keys()), key="pdf_resp")
+        resp_rep = st.selectbox("Filtrar por Responsable", ["Todos"] + list(st.session_state.personal.keys()), key="pdf_resp")
+    with col_rep3:
+        rango_tiempo = st.selectbox(
+            "Rango de Fecha Compromiso", 
+            ["Cualquier Fecha Límite", "Esta Semana", "Próximas 2 Semanas", "Próximas 3 Semanas", "Próximas 4 Semanas"], 
+            key="pdf_tiempo"
+        )
         
     # 2. Motor de Filtrado de Datos Virtual
     df_rep = pd.DataFrame(st.session_state.actividades)
     if not df_rep.empty:
+        # Filtro de Área
         if area_rep != "Todas": 
             df_rep = df_rep[df_rep["Area"] == area_rep]
+        # Filtro de Responsable
         if resp_rep != "Todos": 
             df_rep = df_rep[df_rep["Responsable"] == resp_rep]
             
         # Filtrar de forma automática para mostrar solo pendientes (avance menor a 100%)
-        df_pendientes_rep = df_rep[df_rep["% Avance"].astype(int) < 100]
+        df_pendientes_rep = df_rep[df_rep["% Avance"].astype(int) < 100].copy()
         
-        # 3. Vista Previa en Pantalla
+        # 3. FILTRO TEMPORAL INTELIGENTE (Fecha Compromiso)
+        if rango_tiempo != "Cualquier Fecha Límite" and not df_pendientes_rep.empty:
+            hoy = datetime.now().date()
+            
+            # Calcular los días límite según la opción seleccionada
+            if rango_tiempo == "Esta Semana":
+                dias_limite = 7
+            elif rango_tiempo == "Próximas 2 Semanas":
+                dias_limite = 14
+            elif rango_tiempo == "Próximas 3 Semanas":
+                dias_limite = 21
+            elif rango_tiempo == "Próximas 4 Semanas":
+                dias_limite = 28
+                
+            fecha_maxima = hoy + timedelta(days=dias_limite)
+            
+            # Función segura para convertir el texto "dd-MMM-yy" a una fecha comparable
+            def evaluar_rango_fecha(fecha_str):
+                try:
+                    if not fecha_str or str(fecha_str).strip() in ["None", "nan", ""]:
+                        return False
+                    # Convierte el formato de tu base (ej. "15-Jun-26") a fecha real
+                    f_dt = datetime.strptime(str(fecha_str).strip(), "%d-%b-%y").date()
+                    # Mantiene las tareas vencidas anteriores a hoy y las que entran en las semanas límite
+                    return f_dt <= fecha_maxima
+                except:
+                    return False # Si la fecha tiene un formato roto, no la incluye por seguridad
+                    
+            # Aplicar la máscara de filtrado de tiempo
+            mascara_fechas = df_pendientes_rep["Fecha Compromiso"].apply(evaluar_rango_fecha)
+            df_pendientes_rep = df_pendientes_rep[mascara_fechas]
+        
+        # 4. Vista Previa en Pantalla
         st.write("### 📊 Vista Previa de Actividades Pendientes")
         if not df_pendientes_rep.empty:
-            st.metric("Total de Tareas Pendientes en este Filtor", len(df_pendientes_rep))
+            st.metric("Total de Tareas Pendientes encontradas", len(df_pendientes_rep))
             st.dataframe(df_pendientes_rep[["No", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso"]], use_container_width=True, hide_index=True)
         else:
-            st.success("🎉 ¡Sin pendientes! No hay actividades retrasadas o en proceso con los filtros seleccionados.")
+            st.success("🎉 ¡Sin pendientes! No hay actividades retrasadas o en proceso en el rango de tiempo seleccionado.")
     else:
         st.info("La base de datos se encuentra vacía.")
-
