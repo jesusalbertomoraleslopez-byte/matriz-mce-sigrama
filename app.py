@@ -171,7 +171,7 @@ st.markdown("""
     
     /* Logo negativo en sidebar */
     [data-testid="stSidebar"] img {
-        filter: brightness(0) invert(1) !important;
+        filter: grayscale(1) invert(1) brightness(1.2) contrast(1.2) !important;
     }
 
     /* Botones de navegación en barra lateral */
@@ -342,7 +342,7 @@ if not st.session_state.logged_in:
     st.markdown('<hr style="border: 1px solid #EC2024; margin: 15px 0;">', unsafe_allow_html=True)
     st.markdown("""
     <h2 style="text-align: center; font-family: 'Montserrat', sans-serif; color: #111111; font-weight: 700; font-size: 28px; margin: 10px 0;">
-        <span style="color: #7C3AED;">👥</span> Portal de Capital Humano
+        <span style="color: #EC2024;">📢</span> Matriz de Comunicación Efectiva
     </h2>
     """, unsafe_allow_html=True)
     st.markdown('<hr style="border: 1px solid #EC2024; margin: 15px 0;">', unsafe_allow_html=True)
@@ -351,7 +351,7 @@ if not st.session_state.logged_in:
     with col_log2:
         st.markdown('<div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); margin-top: 20px;">', unsafe_allow_html=True)
         st.markdown('<h3 style="font-family: \'Montserrat\', sans-serif; font-weight: 700; color: #111111; text-align: center; margin-top: 0; font-size: 20px;"><span style="color: #F59E0B;">🔑</span> Acceso al Sistema de Control</h3>', unsafe_allow_html=True)
-        st.markdown('<p style="font-family: \'Questrial\', sans-serif; color: #64748B; font-size: 14px; text-align: center; margin-bottom: 20px;">Por favor, ingrese sus credenciales para operar el Portal de Capital Humano.</p>', unsafe_allow_html=True)
+        st.markdown('<p style="font-family: \'Questrial\', sans-serif; color: #64748B; font-size: 14px; text-align: center; margin-bottom: 20px;">Por favor, ingrese sus credenciales para operar la Matriz de Comunicación Efectiva.</p>', unsafe_allow_html=True)
         
         username_input = st.text_input("Usuario:", key="login_username")
         password_input = st.text_input("Contraseña:", type="password", key="login_password")
