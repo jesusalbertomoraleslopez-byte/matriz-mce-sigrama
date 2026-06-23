@@ -678,24 +678,6 @@ else:
 
     elif opcion_menu == "📥 Cargar Actividades (Usuario)":
         st.subheader("Captura de Nuevas Actividades")
-        
-        # Mostrar resumen de validación si existe
-        if 'last_registered_activity' in st.session_state and st.session_state.last_registered_activity is not None:
-            act = st.session_state.last_registered_activity
-            st.markdown(f"""
-            <div style="background-color: #D4EDDA; border: 1px solid #C3E6CB; color: #155724; padding: 18px; border-radius: 6px; margin-bottom: 20px; font-family: 'Questrial', sans-serif;">
-                <h4 style="margin-top: 0; color: #155724; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 16px;">✅ ¡Actividad Registrada con Éxito y Validada!</h4>
-                <hr style="border: 0.5px solid #C3E6CB; margin: 8px 0;">
-                <p style="margin: 3px 0; font-size: 14px;"><b>No. Actividad:</b> {act['No']}</p>
-                <p style="margin: 3px 0; font-size: 14px;"><b>Fecha de Registro:</b> {act['Fecha']}</p>
-                <p style="margin: 3px 0; font-size: 14px;"><b>Responsable:</b> {act['Responsable']}</p>
-                <p style="margin: 3px 0; font-size: 14px;"><b>Actividad (Descripción):</b> {act['Nombre']}</p>
-                <p style="margin: 3px 0; font-size: 14px; color: #856404; font-weight: bold;">⏳ Tiempo Restante para Ejecutar: {act['Tiempo']}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            if st.button("Limpiar Notificación", key="btn_clear_notif"):
-                st.session_state.last_registered_activity = None
-                st.rerun()
 
         with st.form("form_usuario_carga"):
             o, p, r, a = st.selectbox("Origen", LISTA_CLASIFICACIONES), st.selectbox("Prioridad", ["Baja", "Media", "Urgente"]), st.selectbox("Responsable", list(st.session_state.personal.keys())), st.selectbox("Área", st.session_state.areas)
@@ -730,6 +712,24 @@ else:
                     }
                     st.rerun()
                 except Exception as e_add: st.error(f"Fallo Excel: {e_add}")
+
+        # Mostrar resumen de validación si existe, debajo del formulario/botón
+        if 'last_registered_activity' in st.session_state and st.session_state.last_registered_activity is not None:
+            act = st.session_state.last_registered_activity
+            st.markdown(f"""
+            <div style="background-color: #D4EDDA; border: 1px solid #C3E6CB; color: #155724; padding: 18px; border-radius: 6px; margin-top: 15px; margin-bottom: 20px; font-family: 'Questrial', sans-serif;">
+                <h4 style="margin-top: 0; color: #155724; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 16px;">✅ ¡Actividad Registrada con Éxito y Validada!</h4>
+                <hr style="border: 0.5px solid #C3E6CB; margin: 8px 0;">
+                <p style="margin: 3px 0; font-size: 14px;"><b>No. Actividad:</b> {act['No']}</p>
+                <p style="margin: 3px 0; font-size: 14px;"><b>Fecha de Registro:</b> {act['Fecha']}</p>
+                <p style="margin: 3px 0; font-size: 14px;"><b>Responsable:</b> {act['Responsable']}</p>
+                <p style="margin: 3px 0; font-size: 14px;"><b>Actividad (Descripción):</b> {act['Nombre']}</p>
+                <p style="margin: 3px 0; font-size: 14px; color: #856404; font-weight: bold;">⏳ Tiempo Restante para Ejecutar: {act['Tiempo']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button("Limpiar Notificación", key="btn_clear_notif"):
+                st.session_state.last_registered_activity = None
+                st.rerun()
         
         st.write("---")
         st.subheader("📋 Lista de Actividades (Últimas Cargadas en Amarillo)")
