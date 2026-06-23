@@ -411,6 +411,12 @@ else:
 
     opcion_menu = st.sidebar.radio("Navegación", menu_options)
 
+    # Botón de Recargar Datos en Sidebar
+    if st.sidebar.button("🔄 Recargar Datos", use_container_width=True):
+        st.session_state.actividades = importar_registros_excel()
+        st.sidebar.success("¡Datos recargados!")
+        st.rerun()
+
     # Botón de Cerrar Sesión en Sidebar
     if st.sidebar.button("🚪 Cerrar Sesión", use_container_width=True):
         st.session_state.logged_in = False
@@ -691,15 +697,24 @@ else:
                                         except Exception as err_img: 
                                             st.error(f"Fallo al procesar captura: {err_img}")
                                     
-                                    st.session_state.actividades.loc[idx, "% Avance"] = int(nv_av)
-                                    st.session_state.actividades.loc[idx, "Comentario"] = str(nv_co)
-                                    st.session_state.actividades.loc[idx, "Evidencia"] = str(ruta_foto_final)
-                                    
-                                    try:
-                                        st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                                        st.success("🏁 ¡Cambios registrados con éxito!"); st.rerun()
-                                    except Exception as e_save: 
-                                        st.error(f"Fallo de escritura en base física Excel: {e_save}")
+                                    # Para evitar sobreescribir cambios de otros operadores, leemos el Excel fresco del disco
+                                    df_disco = importar_registros_excel()
+                                    if not df_disco.empty:
+                                        row_no = int(r["No"])
+                                        idx_disco = df_disco[df_disco["No"] == row_no].index
+                                        if len(idx_disco) > 0:
+                                            df_disco.loc[idx_disco[0], "% Avance"] = int(nv_av)
+                                            df_disco.loc[idx_disco[0], "Comentario"] = str(nv_co)
+                                            df_disco.loc[idx_disco[0], "Evidencia"] = str(ruta_foto_final)
+                                            
+                                            try:
+                                                df_disco.to_excel(ARCHIVO_DB, index=False)
+                                                st.session_state.actividades = df_disco
+                                                st.success("🏁 ¡Cambios registrados con éxito!"); st.rerun()
+                                            except Exception as e_save:
+                                                st.error(f"Fallo de escritura en base física Excel: {e_save}")
+                                        else:
+                                            st.error("No se encontró la tarea en la base de datos física.")
                             st.markdown('</div>', unsafe_allow_html=True)
                         st.write("---")
 
@@ -723,12 +738,15 @@ else:
                 except Exception as e:
                     tiempo_ejecutar = "No definido"
 
-                n_id = int(st.session_state.actividades["No"].max() + 1) if not st.session_state.actividades.empty else 1
+                # Cargar datos frescos del disco para evitar sobreescribir otros cambios
+                df_disco = importar_registros_excel()
+                n_id = int(df_disco["No"].max() + 1) if not df_disco.empty else 1
                 n_f = {"No": n_id, "Origen": o, "Fecha Inicio": datetime.now().strftime("%d-%b-%y"), "Prioridad": p, "Responsable": r, "Area": a, "Descripcion": d, "% Avance": 0, "Fecha Compromiso": f.strftime("%d-%b-%y"), "Comentario": "", "Evidencia": ""}
-                st.session_state.actividades = pd.concat([st.session_state.actividades, pd.DataFrame([n_f])], ignore_index=True)
+                df_disco = pd.concat([df_disco, pd.DataFrame([n_f])], ignore_index=True)
                 
                 try:
-                    st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
+                    df_disco.to_excel(ARCHIVO_DB, index=False)
+                    st.session_state.actividades = df_disco
                     # Guardar resumen en session_state para mostrar tras rerun
                     st.session_state.last_registered_activity = {
                         "No": n_id,
