@@ -7,6 +7,7 @@ from PIL import Image
 import os
 import io
 import json
+import unicodedata
 
 # Nombre oficial del archivo base y carpeta física del proyecto
 ARCHIVO_DB = "base_matriz_mce.xlsx"
@@ -17,6 +18,15 @@ if not os.path.exists(CARPETA_EVIDENCIAS):
     os.makedirs(CARPETA_EVIDENCIAS)
 
 Image.MAX_IMAGE_PIXELS = None
+
+# Helper para normalizar texto (elimina acentos y convierte a minúsculas)
+def normalizar_texto(texto):
+    if not texto:
+        return ""
+    return "".join(
+        c for c in unicodedata.normalize('NFD', str(texto).lower().strip())
+        if unicodedata.category(c) != 'Mn'
+    )
 
 # Helper para cargar catálogos desde catalogos.json con fallbacks corregidos
 def cargar_catalogos():
@@ -60,6 +70,12 @@ if 'personal' not in st.session_state or 'areas' not in st.session_state:
         st.session_state.personal = p_dict
     if 'areas' not in st.session_state:
         st.session_state.areas = a_list
+
+# Inicialización del estado de autenticación
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+    st.session_state.rol = None
+    st.session_state.usuario_actual = None
 
 # 1. MOTOR DE IMPORTACIÓN INTELIGENTE DE EXCEL
 def importar_registros_excel():
@@ -153,6 +169,11 @@ st.markdown("""
         font-family: 'Questrial', sans-serif !important;
     }
     
+    /* Logo negativo en sidebar */
+    [data-testid="stSidebar"] img {
+        filter: brightness(0) invert(1) !important;
+    }
+
     /* Botones de navegación en barra lateral */
     [data-testid="stSidebar"] div[role="radiogroup"] label {
         color: #FFFFFF !important;
@@ -294,285 +315,370 @@ else:
     st.markdown('<h2 style="color: #EC2024; text-align: center; font-weight: bold; margin-top:0px; font-family: \'Montserrat\', sans-serif;">PLANTA METALES Y MAQUINADOS</h2>', unsafe_allow_html=True)
     st.markdown('<p style="text-align: center; font-size: 24px; font-weight: bold; color: #111111; font-family: \'Montserrat\', sans-serif;">MATRIZ DE COMUNICACIÓN EFECTIVA</p>', unsafe_allow_html=True)
 
-# Inyección del Logotipo en el Sidebar en un contenedor claro para cumplir con el positivo de marca
-if os.path.exists("LOGOTIPO COLOR (1).jfif"):
-    st.sidebar.markdown('<div style="background-color: #FFFFFF; padding: 12px; border-radius: 6px; text-align: center; border: 1px solid #D2D3D5; margin-bottom: 20px;">', unsafe_allow_html=True)
-    st.sidebar.image("LOGOTIPO COLOR (1).jfif", use_container_width=True)
-    st.sidebar.markdown('</div>', unsafe_allow_html=True)
+# ----------------- FLUJO DE AUTENTICACIÓN (LOGIN) -----------------
+if not st.session_state.logged_in:
+    # Sidebar sin navegación cuando no ha iniciado sesión
+    if os.path.exists("LOGOTIPO COLOR (1).jfif"):
+        st.sidebar.image("LOGOTIPO COLOR (1).jfif", use_container_width=True)
+        
+    st.sidebar.markdown("""
+    <div style="background-color: #0F172A; border: 1px solid #1E293B; padding: 15px; border-radius: 6px; text-align: center; margin-top: 20px;">
+        <p style="color: #F8FAFC; font-family: 'Questrial', sans-serif; font-size: 13px; font-weight: 500; margin: 0; line-height: 1.4;">
+            <span style="color: #F59E0B;">🔒</span> Por favor, inicie sesión en la pantalla principal para configurar la aplicación.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.sidebar.markdown("""
+        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #D2D3D5;">
+            <span style="font-family: 'Questrial', sans-serif; font-style: italic; font-size: 13px; color: #FFFFFF; border-bottom: 2px solid #EC2024; padding-bottom: 4px; display: inline-block;">
+                Ingeniería que da resultados!!
+            </span>
+        </div>
+    """, unsafe_allow_html=True)
 
-opcion_menu = st.sidebar.radio("Navegación", [
-    "📊 Dashboard Principal", 
-    "📋 Tabla de Control", 
-    "📝 Actualizar Mis Avances", 
-    "📥 Cargar Actividades (Usuario)", 
-    "🔐 Panel Administrador", 
-    "👑 Reglas de Liderazgo", 
-    "📋 Reportes PDF",
-    "🏭 Industria 4.0 & Stack"
-])
+    # Vista Principal de Inicio de Sesión
+    st.markdown('<p style="text-align: center; font-size: 16px; font-weight: bold; color: #EC2024; font-family: \'Montserrat\', sans-serif; margin-top: 15px; text-transform: uppercase; letter-spacing: 1px;">SOLUCIONES QUE TRANSFORMAN TU EMPRESA</p>', unsafe_allow_html=True)
+    st.markdown('<hr style="border: 1px solid #EC2024; margin: 15px 0;">', unsafe_allow_html=True)
+    st.markdown("""
+    <h2 style="text-align: center; font-family: 'Montserrat', sans-serif; color: #111111; font-weight: 700; font-size: 28px; margin: 10px 0;">
+        <span style="color: #7C3AED;">👥</span> Portal de Capital Humano
+    </h2>
+    """, unsafe_allow_html=True)
+    st.markdown('<hr style="border: 1px solid #EC2024; margin: 15px 0;">', unsafe_allow_html=True)
+    
+    col_log1, col_log2, col_log3 = st.columns([1, 2, 1])
+    with col_log2:
+        st.markdown('<div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); margin-top: 20px;">', unsafe_allow_html=True)
+        st.markdown('<h3 style="font-family: \'Montserrat\', sans-serif; font-weight: 700; color: #111111; text-align: center; margin-top: 0; font-size: 20px;"><span style="color: #F59E0B;">🔑</span> Acceso al Sistema de Control</h3>', unsafe_allow_html=True)
+        st.markdown('<p style="font-family: \'Questrial\', sans-serif; color: #64748B; font-size: 14px; text-align: center; margin-bottom: 20px;">Por favor, ingrese sus credenciales para operar el Portal de Capital Humano.</p>', unsafe_allow_html=True)
+        
+        username_input = st.text_input("Usuario:", key="login_username")
+        password_input = st.text_input("Contraseña:", type="password", key="login_password")
+        
+        st.markdown('<div style="margin-top: 20px;">', unsafe_allow_html=True)
+        btn_login = st.button("Ingresar", use_container_width=True, key="btn_login_submit")
+        st.markdown('</div></div>', unsafe_allow_html=True)
+        
+        if btn_login:
+            username_norm = normalizar_texto(username_input)
+            colaborador_encontrado = None
+            for name in st.session_state.personal.keys():
+                if normalizar_texto(name) == username_norm:
+                    colaborador_encontrado = name
+                    break
+            
+            if username_norm in ["admin", "administrador"] and password_input == "SigramaMetales2026":
+                st.session_state.logged_in = True
+                st.session_state.rol = "Administrador"
+                st.session_state.usuario_actual = "Administrador"
+                st.success("Sesión iniciada como Administrador.")
+                st.rerun()
+            elif colaborador_encontrado is not None and password_input == "Metales":
+                st.session_state.logged_in = True
+                st.session_state.rol = "Colaborador"
+                st.session_state.usuario_actual = colaborador_encontrado
+                st.success(f"Sesión iniciada como {colaborador_encontrado}.")
+                st.rerun()
+            else:
+                st.error("Credenciales incorrectas. Verifique el usuario y la contraseña.")
 
-# Firma institucional al final de la barra lateral
-st.sidebar.markdown("""
-    <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #D2D3D5;">
-        <span style="font-family: 'Questrial', sans-serif; font-style: italic; font-size: 13px; color: #FFFFFF; border-bottom: 2px solid #EC2024; padding-bottom: 4px; display: inline-block;">
-            Ingeniería que da resultados!!
+else:
+    # ----------------- MENU PRINCIPAL Y NAVEGACIÓN (LOGGED IN) -----------------
+    if os.path.exists("LOGOTIPO COLOR (1).jfif"):
+        st.sidebar.image("LOGOTIPO COLOR (1).jfif", use_container_width=True)
+
+    st.sidebar.markdown(f"""
+    <div style="background-color: #0F172A; border: 1px solid #1E293B; padding: 10px; border-radius: 6px; text-align: center; margin-bottom: 15px;">
+        <span style="color: #F8FAFC; font-family: 'Questrial', sans-serif; font-size: 13px; font-weight: 500;">
+            👤 Usuario: <b>{st.session_state.usuario_actual}</b>
         </span>
     </div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
+    # Filtrar navegación de acuerdo al rol de seguridad
+    menu_options = [
+        "📊 Dashboard Principal", 
+        "📋 Tabla de Control", 
+        "📝 Actualizar Mis Avances", 
+        "📥 Cargar Actividades (Usuario)", 
+        "👑 Reglas de Liderazgo", 
+        "📋 Reportes PDF",
+        "🏭 Industria 4.0 & Stack"
+    ]
+    if st.session_state.rol == "Administrador":
+        menu_options.insert(4, "🔐 Panel Administrador")
 
-if opcion_menu == "📊 Dashboard Principal":
-    col_f1, col_f2 = st.columns(2)
-    with col_f1: area_sel = st.selectbox("Filtrar por Área", ["Todas"] + st.session_state.areas)
-    with col_f2: resp_sel = st.selectbox("Filtrar por Responsable", ["Todos"] + list(st.session_state.personal.keys()))
-    df_f = pd.DataFrame(st.session_state.actividades)
-    if area_sel != "Todas": df_f = df_f[df_f["Area"] == area_sel]
-    if resp_sel != "Todos": df_f = df_f[df_f["Responsable"] == resp_sel]
-    
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Total Actividades", len(df_f))
-    c2.metric("Terminadas", len(df_f[df_f["% Avance"] == 100]))
-    c3.metric("Avance Promedio", f"{df_f['% Avance'].mean() if len(df_f)>0 else 0:.1f}%")
-    st.write("---")
-    g1, g2 = st.columns(2)
-    with g1: st.plotly_chart(crear_grafico_pareto(df_f, "Origen", "Pareto 1: Actividades vs Cantidad"), use_container_width=True)
-    with g2: st.plotly_chart(crear_grafico_pareto(df_f, "Responsable", "Pareto 2: Personas vs Cantidad"), use_container_width=True)
-    
-    st.write("---"); st.subheader("Pareto 3: Estado de Actividades de Líderes Principales")
-    lideres_p = ["Jesús Morales", "Bryan Flores", "Cruz Carreón", "Luis Quintana"]
-    df_lideres = pd.DataFrame(st.session_state.actividades)[lambda x: x["Responsable"].isin(lideres_p)].copy()
-    if not df_lideres.empty:
-        hoy = datetime.now()
-        def clasificar_vencimientos(f):
-            try:
-                f_comp = datetime.strptime(str(f["Fecha Compromiso"]).strip(), "%d-%b-%y")
-                return "Vencida (Retraso)" if (int(f["% Avance"]) < 100 and f_comp < hoy) else ("Terminada" if int(f["% Avance"]) == 100 else "Pendiente a Tiempo")
-            except: return "Pendiente a Tiempo"
-        df_lideres["Estado_Real"] = df_lideres.apply(clasificar_vencimientos, axis=1)
-        df_lideres["Valor_Eje"] = df_lideres["Estado_Real"].apply(lambda x: -1 if x == "Vencida (Retraso)" else 1)
-        # Rojo #EC2024 oficial para retrasos
-        fig_l = px.bar(df_lideres, x="Origen", y="Valor_Eje", color="Estado_Real", facet_col="Responsable", facet_col_wrap=2, color_discrete_map={"Terminada": "#2ECC71", "Pendiente a Tiempo": "#FFE600", "Vencida (Retraso)": "#EC2024"}, labels={"Origen": "Clasificación", "Valor_Eje": "Tareas"})
-        fig_l.update_layout(barmode="stack", template="plotly_white", height=600, legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"))
-        fig_l.for_each_annotation(lambda a: a.update(text=f"<b>👤 {a.text.split('=')[-1].upper()}</b>", font=dict(size=14, color="#111111")))
-        st.plotly_chart(fig_l, use_container_width=True)
+    opcion_menu = st.sidebar.radio("Navegación", menu_options)
 
-elif opcion_menu == "📋 Tabla de Control":
-    st.subheader("Historial Completo de la Matriz de Comunicación")
-    df_t = pd.DataFrame(st.session_state.actividades)
-    st.write("---")
-    ct1, ct2, ct3 = st.columns(3)
-    with ct1: fa = st.selectbox("Filtrar por Área", ["Todas"] + st.session_state.areas, key="t_a")
-    with ct2: fr = st.selectbox("Filtrar por Responsable", ["Todos"] + list(st.session_state.personal.keys()), key="t_r")
-    with ct3: fp = st.selectbox("Filtrar por Prioridad", ["Todas", "Urgente", "Media", "Baja"])
-    if fa != "Todas": df_t = df_t[df_t["Area"] == fa]
-    if fr != "Todos": df_t = df_t[df_t["Responsable"] == fr]
-    if fp != "Todas": df_t = df_t[df_t["Prioridad"] == fp]
-    busq = st.text_input("🔍 Buscar por palabra clave en la descripción:")
-    if busq: df_t = df_t[df_t["Descripcion"].str.contains(busq, case=False, na=False)]
-    if not df_t.empty:
-        df_mostrar = df_t[["No", "Origen", "Fecha Inicio", "Prioridad", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso", "Comentario", "Evidencia"]].copy()
-        hoy = datetime.now()
-        # Semáforo de colores con Rojo suave, Amarillo suave y Verde suave
-        def aplicar_colores_renglon(fila):
-            try:
-                num_avance = int(fila["% Avance"])
-                fecha_comp_str = str(fila["Fecha Compromiso"]).strip()
-                fecha_vencida = False
-                if fecha_comp_str:
-                    try:
-                        f_comp = datetime.strptime(fecha_comp_str, "%d-%b-%y")
-                        if f_comp < hoy: fecha_vencida = True
-                    except: pass
-                if num_avance < 100 and fecha_vencida: 
-                    return ['background-color: #F8D7DA; color: #721C24; font-weight: 500;'] * len(fila)
-                elif num_avance == 100: 
-                    return ['background-color: #D4EDDA; color: #155724;'] * len(fila)
-                elif num_avance > 0: 
-                    return ['background-color: #FFF3CD; color: #856404;'] * len(fila)
-            except: pass
-            return [''] * len(fila)
+    # Botón de Cerrar Sesión en Sidebar
+    if st.sidebar.button("🚪 Cerrar Sesión", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.rol = None
+        st.session_state.usuario_actual = None
+        st.rerun()
 
-        st.dataframe(df_mostrar.style.apply(aplicar_colores_renglon, axis=1).format({"% Avance": "{:.0f}%"}), use_container_width=True, hide_index=True)
+    # Firma al final de la navegación
+    st.sidebar.markdown("""
+        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #D2D3D5;">
+            <span style="font-family: 'Questrial', sans-serif; font-style: italic; font-size: 13px; color: #FFFFFF; border-bottom: 2px solid #EC2024; padding-bottom: 4px; display: inline-block;">
+                Ingeniería que da resultados!!
+            </span>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # ----------------- RENDERIZACIÓN DE SECCIONES -----------------
+    if opcion_menu == "📊 Dashboard Principal":
+        col_f1, col_f2 = st.columns(2)
+        with col_f1: area_sel = st.selectbox("Filtrar por Área", ["Todas"] + st.session_state.areas)
+        with col_f2: resp_sel = st.selectbox("Filtrar por Responsable", ["Todos"] + list(st.session_state.personal.keys()))
+        df_f = pd.DataFrame(st.session_state.actividades)
+        if area_sel != "Todas": df_f = df_f[df_f["Area"] == area_sel]
+        if resp_sel != "Todos": df_f = df_f[df_f["Responsable"] == resp_sel]
         
-        # EXPORTADOR EXCEL DINÁMICO
-        def generar_excel_con_colores(df_local):
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df_local.to_excel(writer, index=False, sheet_name='Historial_MCE')
-                workbook = writer.book
-                worksheet = writer.sheets['Historial_MCE']
-                
-                # Autoajustar ancho de columnas
-                for col in worksheet.columns:
-                    max_len = max(len(str(cell.value or '')) for cell in col)
-                    col_letter = col[0].column_letter
-                    worksheet.column_dimensions[col_letter].width = max(max_len + 3, 12)
-                    
-                from openpyxl.styles import PatternFill, Font
-                fill_verde = PatternFill(start_color="D4EDDA", fill_type="solid")
-                fill_amarillo = PatternFill(start_color="FFF3CD", fill_type="solid")
-                fill_rojo = PatternFill(start_color="F8D7DA", fill_type="solid")
-                font_rojo = Font(color="721C24", bold=True)
-                
-                # Detectar columnas dinámicamente
-                headers = [worksheet.cell(row=1, column=c).value for c in range(1, worksheet.max_column + 1)]
-                idx_avance = headers.index("% Avance") + 1 if "% Avance" in headers else 8
-                idx_compromiso = headers.index("Fecha Compromiso") + 1 if "Fecha Compromiso" in headers else 9
-                
-                for row_idx in range(2, worksheet.max_row + 1):
-                    try:
-                        avance_val = int(str(worksheet.cell(row=row_idx, column=idx_avance).value).replace('%','').strip())
-                        fecha_comp_str = str(worksheet.cell(row=row_idx, column=idx_compromiso).value).strip()
-                        
-                        es_vencido = False
-                        if avance_val < 100 and fecha_comp_str and fecha_comp_str != "None":
-                            from datetime import datetime
-                            if datetime.strptime(fecha_comp_str, "%d-%b-%y") < datetime.now():
-                                es_vencido = True
-                        
-                        for col_idx in range(1, worksheet.max_column + 1):
-                            cell = worksheet.cell(row=row_idx, column=col_idx)
-                            if avance_val < 100 and es_vencido:
-                                cell.fill = fill_rojo; cell.font = font_rojo
-                            elif avance_val == 100:
-                                cell.fill = fill_verde
-                            elif avance_val > 0:
-                                cell.fill = fill_amarillo
-                    except:
-                        pass
-            return output.getvalue()
-
-        excel_data = generar_excel_con_colores(df_mostrar)
-        st.download_button(
-            label="📥 Descargar Reporte en Excel (.xlsx con Colores)",
-            data=excel_data,
-            file_name=f"Reporte_Matriz_MCE_{datetime.now().strftime('%d-%b-%y')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-elif opcion_menu == "📝 Actualizar Mis Avances":
-    st.subheader("Actualización de Avances de Tareas")
-    
-    u = st.selectbox("Identifícate (Selecciona tu nombre)", list(st.session_state.personal.keys()))
-    
-    df_usuario = pd.DataFrame(st.session_state.actividades)
-    if not df_usuario.empty and "Responsable" in df_usuario.columns:
-        df_usuario = df_usuario[df_usuario["Responsable"] == u]
-    
-    if df_usuario.empty: 
-        st.info(f"👤 {u} no tiene actividades pendientes asignadas en este momento.")
-    else:
-        st.markdown('<p style="font-size:16px; font-weight:bold; color:#111111; margin-bottom:5px; font-family:\'Montserrat\', sans-serif;">📊 Mi Rendimiento Actual</p>', unsafe_allow_html=True)
-        col_dash1, col_dash2, col_dash3 = st.columns(3)
-        
-        tareas_pendientes = len(df_usuario[df_usuario["% Avance"].astype(int) < 100])
-        tareas_hechas = len(df_usuario[df_usuario["% Avance"].astype(int) == 100])
-        promedio_avance = df_usuario["% Avance"].astype(int).mean()
-        
-        col_dash1.metric(label="⏳ En Proceso", value=f"{tareas_pendientes} tareas")
-        col_dash2.metric(label="✅ Terminadas", value=f"{tareas_hechas} tareas")
-        col_dash3.metric(label="📈 Eficiencia Total", value=f"{promedio_avance:.1f}%")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Total Actividades", len(df_f))
+        c2.metric("Terminadas", len(df_f[df_f["% Avance"] == 100]))
+        c3.metric("Avance Promedio", f"{df_f['% Avance'].mean() if len(df_f)>0 else 0:.1f}%")
         st.write("---")
+        g1, g2 = st.columns(2)
+        with g1: st.plotly_chart(crear_grafico_pareto(df_f, "Origen", "Pareto 1: Actividades vs Cantidad"), use_container_width=True)
+        with g2: st.plotly_chart(crear_grafico_pareto(df_f, "Responsable", "Pareto 2: Personas vs Cantidad"), use_container_width=True)
         
-        clasificacion = st.radio(
-            "Filtrar mi lista por estatus:",
-            ["En proceso (0% a 99%)", "Terminadas (100%)", "Ver Todas las Asignadas"],
-            horizontal=True
-        )
-        
-        if clasificacion == "En proceso (0% a 99%)":
-            df_filtrado = df_usuario[df_usuario["% Avance"].astype(int) < 100]
-        elif clasificacion == "Terminadas (100%)":
-            df_filtrado = df_usuario[df_usuario["% Avance"].astype(int) == 100]
-        else:
-            df_filtrado = df_usuario.copy()
+        st.write("---"); st.subheader("Pareto 3: Estado de Actividades de Líderes Principales")
+        lideres_p = ["Jesús Morales", "Bryan Flores", "Cruz Carreón", "Luis Quintana"]
+        df_lideres = pd.DataFrame(st.session_state.actividades)[lambda x: x["Responsable"].isin(lideres_p)].copy()
+        if not df_lideres.empty:
+            hoy = datetime.now()
+            def clasificar_vencimientos(f):
+                try:
+                    f_comp = datetime.strptime(str(f["Fecha Compromiso"]).strip(), "%d-%b-%y")
+                    return "Vencida (Retraso)" if (int(f["% Avance"]) < 100 and f_comp < hoy) else ("Terminada" if int(f["% Avance"]) == 100 else "Pendiente a Tiempo")
+                except: return "Pendiente a Tiempo"
+            df_lideres["Estado_Real"] = df_lideres.apply(clasificar_vencimientos, axis=1)
+            df_lideres["Valor_Eje"] = df_lideres["Estado_Real"].apply(lambda x: -1 if x == "Vencida (Retraso)" else 1)
             
+            fig_l = px.bar(df_lideres, x="Origen", y="Valor_Eje", color="Estado_Real", facet_col="Responsable", facet_col_wrap=2, color_discrete_map={"Terminada": "#2ECC71", "Pendiente a Tiempo": "#FFE600", "Vencida (Retraso)": "#EC2024"}, labels={"Origen": "Clasificación", "Valor_Eje": "Tareas"})
+            fig_l.update_layout(barmode="stack", template="plotly_white", height=600, legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"))
+            fig_l.for_each_annotation(lambda a: a.update(text=f"<b>👤 {a.text.split('=')[-1].upper()}</b>", font=dict(size=14, color="#111111")))
+            st.plotly_chart(fig_l, use_container_width=True)
+
+    elif opcion_menu == "📋 Tabla de Control":
+        st.subheader("Historial Completo de la Matriz de Comunicación")
+        df_t = pd.DataFrame(st.session_state.actividades)
         st.write("---")
-        
-        if df_filtrado.empty:
-            st.info(f"📋 No hay tareas en la clasificación '{clasificacion}' para {u}.")
-        else:
-            # Listado en cascada optimizado con HTML/CSS (Alto rendimiento sin Plotly por elemento)
-            for idx in df_filtrado.index:
-                r = st.session_state.actividades.loc[idx]
-                
-                with st.container():
-                    # Tarjeta de actividad con sombra ligera
-                    st.markdown(f"""
-                    <div class="task-card">
-                        <p style="font-family:'Montserrat', sans-serif; font-size:18px; font-weight:bold; color:#111111; margin:0 0 6px 0;">
-                            📋 Actividad No. {r["No"]} | {r["Area"]} | Prioridad: <span style="color:#EC2024; font-weight:700;">{r["Prioridad"]}</span>
-                        </p>
-                        <p style="font-family:'Questrial', sans-serif; font-size:15px; color:#333333; margin:0 0 10px 0;">
-                            <b>Descripción:</b> {r["Descripcion"]}
-                        </p>
-                    </div>
-                    """, unsafe_allow_html=True)
+        ct1, ct2, ct3 = st.columns(3)
+        with ct1: fa = st.selectbox("Filtrar por Área", ["Todas"] + st.session_state.areas, key="t_a")
+        with ct2: fr = st.selectbox("Filtrar por Responsable", ["Todos"] + list(st.session_state.personal.keys()), key="t_r")
+        with ct3: fp = st.selectbox("Filtrar por Prioridad", ["Todas", "Urgente", "Media", "Baja"])
+        if fa != "Todas": df_t = df_t[df_t["Area"] == fa]
+        if fr != "Todos": df_t = df_t[df_t["Responsable"] == fr]
+        if fp != "Todas": df_t = df_t[df_t["Prioridad"] == fp]
+        busq = st.text_input("🔍 Buscar por palabra clave en la descripción:")
+        if busq: df_t = df_t[df_t["Descripcion"].str.contains(busq, case=False, na=False)]
+        if not df_t.empty:
+            df_mostrar = df_t[["No", "Origen", "Fecha Inicio", "Prioridad", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso", "Comentario", "Evidencia"]].copy()
+            hoy = datetime.now()
+            
+            def aplicar_colores_renglon(fila):
+                try:
+                    num_avance = int(fila["% Avance"])
+                    fecha_comp_str = str(fila["Fecha Compromiso"]).strip()
+                    fecha_vencida = False
+                    if fecha_comp_str:
+                        try:
+                            f_comp = datetime.strptime(fecha_comp_str, "%d-%b-%y")
+                            if f_comp < hoy: fecha_vencida = True
+                        except: pass
+                    if num_avance < 100 and fecha_vencida: 
+                        return ['background-color: #F8D7DA; color: #721C24; font-weight: 500;'] * len(fila)
+                    elif num_avance == 100: 
+                        return ['background-color: #D4EDDA; color: #155724;'] * len(fila)
+                    elif num_avance > 0: 
+                        return ['background-color: #FFF3CD; color: #856404;'] * len(fila)
+                except: pass
+                return [''] * len(fila)
+
+            st.dataframe(df_mostrar.style.apply(aplicar_colores_renglon, axis=1).format({"% Avance": "{:.0f}%"}), use_container_width=True, hide_index=True)
+            
+            def generar_excel_con_colores(df_local):
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    df_local.to_excel(writer, index=False, sheet_name='Historial_MCE')
+                    workbook = writer.book
+                    worksheet = writer.sheets['Historial_MCE']
                     
-                    col_izq, col_der = st.columns(2)
-                    
-                    with col_izq:
-                        progreso_actual = int(r['% Avance'])
+                    for col in worksheet.columns:
+                        max_len = max(len(str(cell.value or '')) for cell in col)
+                        col_letter = col[0].column_letter
+                        worksheet.column_dimensions[col_letter].width = max(max_len + 3, 12)
                         
-                        # Barra de progreso nativa en HTML/CSS de alta velocidad
-                        color_progreso = "#2ECC71" if progreso_actual == 100 else "#EC2024"
+                    from openpyxl.styles import PatternFill, Font
+                    fill_verde = PatternFill(start_color="D4EDDA", fill_type="solid")
+                    fill_amarillo = PatternFill(start_color="FFF3CD", fill_type="solid")
+                    fill_rojo = PatternFill(start_color="F8D7DA", fill_type="solid")
+                    font_rojo = Font(color="721C24", bold=True)
+                    
+                    headers = [worksheet.cell(row=1, column=c).value for c in range(1, worksheet.max_column + 1)]
+                    idx_avance = headers.index("% Avance") + 1 if "% Avance" in headers else 8
+                    idx_compromiso = headers.index("Fecha Compromiso") + 1 if "Fecha Compromiso" in headers else 9
+                    
+                    for row_idx in range(2, worksheet.max_row + 1):
+                        try:
+                            avance_val = int(str(worksheet.cell(row=row_idx, column=idx_avance).value).replace('%','').strip())
+                            fecha_comp_str = str(worksheet.cell(row=row_idx, column=idx_compromiso).value).strip()
+                            
+                            es_vencido = False
+                            if avance_val < 100 and fecha_comp_str and fecha_comp_str != "None":
+                                from datetime import datetime
+                                if datetime.strptime(fecha_comp_str, "%d-%b-%y") < datetime.now():
+                                    es_vencido = True
+                            
+                            for col_idx in range(1, worksheet.max_column + 1):
+                                cell = worksheet.cell(row=row_idx, column=col_idx)
+                                if avance_val < 100 and es_vencido:
+                                    cell.fill = fill_rojo; cell.font = font_rojo
+                                elif avance_val == 100:
+                                    cell.fill = fill_verde
+                                elif avance_val > 0:
+                                    cell.fill = fill_amarillo
+                        except:
+                            pass
+                return output.getvalue()
+
+            excel_data = generar_excel_con_colores(df_mostrar)
+            st.download_button(
+                label="📥 Descargar Reporte en Excel (.xlsx con Colores)",
+                data=excel_data,
+                file_name=f"Reporte_Matriz_MCE_{datetime.now().strftime('%d-%b-%y')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+    elif opcion_menu == "📝 Actualizar Mis Avances":
+        st.subheader("Actualización de Avances de Tareas")
+        
+        # Filtro de responsable autodetectado y bloqueado para Colaboradores
+        if st.session_state.rol == "Colaborador":
+            u = st.session_state.usuario_actual
+            st.markdown(f"<div style='background-color:#E2E8F0; padding:10px; border-radius:4px; margin-bottom:15px; font-weight:bold;'>👤 Colaborador Activo: {u}</div>", unsafe_allow_html=True)
+        else:
+            u = st.selectbox("Seleccionar Responsable:", list(st.session_state.personal.keys()))
+        
+        df_usuario = pd.DataFrame(st.session_state.actividades)
+        if not df_usuario.empty and "Responsable" in df_usuario.columns:
+            df_usuario = df_usuario[df_usuario["Responsable"] == u]
+        
+        if df_usuario.empty: 
+            st.info(f"👤 {u} no tiene actividades pendientes asignadas en este momento.")
+        else:
+            st.markdown('<p style="font-size:16px; font-weight:bold; color:#111111; margin-bottom:5px; font-family:\'Montserrat\', sans-serif;">📊 Mi Rendimiento Actual</p>', unsafe_allow_html=True)
+            col_dash1, col_dash2, col_dash3 = st.columns(3)
+            
+            tareas_pendientes = len(df_usuario[df_usuario["% Avance"].astype(int) < 100])
+            tareas_hechas = len(df_usuario[df_usuario["% Avance"].astype(int) == 100])
+            promedio_avance = df_usuario["% Avance"].astype(int).mean()
+            
+            col_dash1.metric(label="⏳ En Proceso", value=f"{tareas_pendientes} tareas")
+            col_dash2.metric(label="✅ Terminadas", value=f"{tareas_hechas} tareas")
+            col_dash3.metric(label="📈 Eficiencia Total", value=f"{promedio_avance:.1f}%")
+            st.write("---")
+            
+            clasificacion = st.radio(
+                "Filtrar mi lista por estatus:",
+                ["En proceso (0% a 99%)", "Terminadas (100%)", "Ver Todas las Asignadas"],
+                horizontal=True
+            )
+            
+            if clasificacion == "En proceso (0% a 99%)":
+                df_filtrado = df_usuario[df_usuario["% Avance"].astype(int) < 100]
+            elif clasificacion == "Terminadas (100%)":
+                df_filtrado = df_usuario[df_usuario["% Avance"].astype(int) == 100]
+            else:
+                df_filtrado = df_usuario.copy()
+                
+            st.write("---")
+            
+            if df_filtrado.empty:
+                st.info(f"📋 No hay tareas en la clasificación '{clasificacion}' para {u}.")
+            else:
+                for idx in df_filtrado.index:
+                    r = st.session_state.actividades.loc[idx]
+                    
+                    with st.container():
                         st.markdown(f"""
-                        <div style="font-family:'Montserrat', sans-serif; font-size:13px; font-weight:700; color:#111111; margin-bottom:4px;">
-                            PROGRESO: {progreso_actual}%
-                        </div>
-                        <div style="width:100%; background-color:#D2D3D5; border-radius:4px; height:18px; overflow:hidden; margin-bottom:12px; border:1px solid #D2D3D5;">
-                            <div style="width:{progreso_actual}%; background-color:{color_progreso}; height:100%; transition:width 0.4s ease-in-out;"></div>
+                        <div class="task-card">
+                            <p style="font-family:'Montserrat', sans-serif; font-size:18px; font-weight:bold; color:#111111; margin:0 0 6px 0;">
+                                📋 Actividad No. {r["No"]} | {r["Area"]} | Prioridad: <span style="color:#EC2024; font-weight:700;">{r["Prioridad"]}</span>
+                            </p>
+                            <p style="font-family:'Questrial', sans-serif; font-size:15px; color:#333333; margin:0 0 10px 0;">
+                                <b>Descripción:</b> {r["Descripcion"]}
+                            </p>
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        nv_av = st.slider("Ajustar %:", min_value=0, max_value=100, value=progreso_actual, step=5, key=f"num_{r['No']}")
-                    
-                    with col_der:
-                        comentario_limpio = "" if str(r['Comentario']).strip().lower() in ["nan", "none", ""] else str(r['Comentario'])
-                        nv_co = st.text_input("Comentarios de bitácora:", value=comentario_limpio, key=f"c_{r['No']}")
+                        col_izq, col_der = st.columns(2)
                         
-                        evidencia_guardada = str(r['Evidencia']).strip()
-                        if evidencia_guardada and os.path.exists(evidencia_guardada):
-                            st.image(Image.open(evidencia_guardada), width=130, caption="📸 Evidencia Actual")
+                        with col_izq:
+                            progreso_actual = int(r['% Avance'])
+                            
+                            color_progreso = "#2ECC71" if progreso_actual == 100 else "#EC2024"
+                            st.markdown(f"""
+                            <div style="font-family:'Montserrat', sans-serif; font-size:13px; font-weight:700; color:#111111; margin-bottom:4px;">
+                                PROGRESO: {progreso_actual}%
+                            </div>
+                            <div style="width:100%; background-color:#D2D3D5; border-radius:4px; height:18px; overflow:hidden; margin-bottom:12px; border:1px solid #D2D3D5;">
+                                <div style="width:{progreso_actual}%; background-color:{color_progreso}; height:100%; transition:width 0.4s ease-in-out;"></div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            nv_av = st.slider("Ajustar %:", min_value=0, max_value=100, value=progreso_actual, step=5, key=f"num_{r['No']}")
                         
-                        foto = st.file_uploader("Evidencia Fotográfica (Cierre 100%):", type=["jpg","png","jpeg","jfif"], key=f"i_{r['No']}") if nv_av == 100 else None
-                        if foto: 
-                            st.image(Image.open(foto), width=100, caption="Vista Previa")
-                        
-                        st.markdown('<div style="margin-top: 10px;">', unsafe_allow_html=True)
-                        if st.button("Guardar Tarea", key=f"b_{r['No']}", use_container_width=True):
-                            if nv_av == 100 and not foto and not evidencia_guardada: 
-                                st.error("⚠️ Faltan las fotografías físicas obligatorias para autorizar el cierre al 100%.")
-                            else:
-                                ruta_foto_final = evidencia_guardada
-                                if foto is not None:
+                        with col_der:
+                            comentario_limpio = "" if str(r['Comentario']).strip().lower() in ["nan", "none", ""] else str(r['Comentario'])
+                            nv_co = st.text_input("Comentarios de bitácora:", value=comentario_limpio, key=f"c_{r['No']}")
+                            
+                            evidencia_guardada = str(r['Evidencia']).strip()
+                            if evidencia_guardada and os.path.exists(evidencia_guardada):
+                                st.image(Image.open(evidencia_guardada), width=130, caption="📸 Evidencia Actual")
+                            
+                            foto = st.file_uploader("Evidencia Fotográfica (Cierre 100%):", type=["jpg","png","jpeg","jfif"], key=f"i_{r['No']}") if nv_av == 100 else None
+                            if foto: 
+                                st.image(Image.open(foto), width=100, caption="Vista Previa")
+                            
+                            st.markdown('<div style="margin-top: 10px;">', unsafe_allow_html=True)
+                            if st.button("Guardar Tarea", key=f"b_{r['No']}", use_container_width=True):
+                                if nv_av == 100 and not foto and not evidencia_guardada: 
+                                    st.error("⚠️ Faltan las fotografías físicas obligatorias para autorizar el cierre al 100%.")
+                                else:
+                                    ruta_foto_final = evidencia_guardada
+                                    if foto is not None:
+                                        try:
+                                            img_abierta = Image.open(foto)
+                                            if img_abierta.mode in ("RGBA", "P"): 
+                                                img_abierta = img_abierta.convert("RGB")
+                                            img_abierta.thumbnail((800, 600), Image.Resampling.LANCZOS)
+                                            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                            nombre_archivo_final = f"MCE-{int(r['No']):03d}_evidencia_{stamp}.jpg"
+                                            ruta_foto_final = os.path.join(CARPETA_EVIDENCIAS, nombre_archivo_final)
+                                            img_abierta.save(ruta_foto_final, "JPEG", quality=65)
+                                        except Exception as err_img: 
+                                            st.error(f"Fallo al procesar captura: {err_img}")
+                                    
+                                    st.session_state.actividades.loc[idx, "% Avance"] = int(nv_av)
+                                    st.session_state.actividades.loc[idx, "Comentario"] = str(nv_co)
+                                    st.session_state.actividades.loc[idx, "Evidencia"] = str(ruta_foto_final)
+                                    
                                     try:
-                                        img_abierta = Image.open(foto)
-                                        if img_abierta.mode in ("RGBA", "P"): 
-                                            img_abierta = img_abierta.convert("RGB")
-                                        img_abierta.thumbnail((800, 600), Image.Resampling.LANCZOS)
-                                        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                                        nombre_archivo_final = f"MCE-{int(r['No']):03d}_evidencia_{stamp}.jpg"
-                                        ruta_foto_final = os.path.join(CARPETA_EVIDENCIAS, nombre_archivo_final)
-                                        img_abierta.save(ruta_foto_final, "JPEG", quality=65)
-                                    except Exception as err_img: 
-                                        st.error(f"Fallo al procesar captura: {err_img}")
-                                
-                                st.session_state.actividades.loc[idx, "% Avance"] = int(nv_av)
-                                st.session_state.actividades.loc[idx, "Comentario"] = str(nv_co)
-                                st.session_state.actividades.loc[idx, "Evidencia"] = str(ruta_foto_final)
-                                
-                                try:
-                                    st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                                    st.success("🏁 ¡Cambios registrados con éxito!"); st.rerun()
-                                except Exception as e_save: 
-                                    st.error(f"Fallo de escritura en base física Excel: {e_save}")
-                        st.markdown('</div>', unsafe_allow_html=True)
-                    st.write("---")
+                                        st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
+                                        st.success("🏁 ¡Cambios registrados con éxito!"); st.rerun()
+                                    except Exception as e_save: 
+                                        st.error(f"Fallo de escritura en base física Excel: {e_save}")
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        st.write("---")
 
-elif opcion_menu == "📥 Cargar Actividades (Usuario)":
-    st.subheader("Captura de Nuevas Actividades")
-    if st.text_input("Contraseña de Usuario:", type="password", key="pwd_carga_usr") == "Metales":
+    elif opcion_menu == "📥 Cargar Actividades (Usuario)":
+        st.subheader("Captura de Nuevas Actividades")
+        # Si ya inició sesión como colaborador o admin, no se le pide reintroducir contraseña
         with st.form("form_usuario_carga"):
             o, p, r, a = st.selectbox("Origen", LISTA_CLASIFICACIONES), st.selectbox("Prioridad", ["Baja", "Media", "Urgente"]), st.selectbox("Responsable", list(st.session_state.personal.keys())), st.selectbox("Área", st.session_state.areas)
             d, f = st.text_area("Descripción"), st.date_input("Fecha Compromiso")
@@ -585,9 +691,8 @@ elif opcion_menu == "📥 Cargar Actividades (Usuario)":
                     st.success("¡Registrada!"); st.rerun()
                 except Exception as e_add: st.error(f"Fallo Excel: {e_add}")
 
-elif opcion_menu == "🔐 Panel Administrador":
-    st.markdown('### Panel de Control Máster')
-    if st.text_input("Introduce la contraseña Máster:", type="password", key="pwd_admin_master") == "SigramaMetales2026":
+    elif opcion_menu == "🔐 Panel Administrador" and st.session_state.rol == "Administrador":
+        st.markdown('### Panel de Control Máster')
         st.success("Acceso Máster Autorizado")
         st.write("---")
         st.markdown("### 📊 Consola de Sincronización Automática con GitHub (API REST)")
@@ -612,7 +717,6 @@ elif opcion_menu == "🔐 Panel Administrador":
                         font_rojo, font_normal = Font(color="721C24", bold=True), Font(color="000000")
                         hoy_dt = datetime.now()
                         
-                        # Detectar columnas dinámicamente para dar formato al subir a GitHub
                         headers = [ws.cell(row=1, column=c).value for c in range(1, ws.max_column + 1)]
                         idx_avance = headers.index("% Avance") + 1 if "% Avance" in headers else 8
                         idx_compromiso = headers.index("Fecha Compromiso") + 1 if "Fecha Compromiso" in headers else 9
@@ -687,7 +791,6 @@ elif opcion_menu == "🔐 Panel Administrador":
                     "Comentario": st.column_config.TextColumn("Comentario", width="medium"),
                     "Evidencia": st.column_config.TextColumn("Ruta Evidencia", disabled=True)
                 }
-                # Permite borrar filas únicamente aquí en el Panel del Administrador usando st.data_editor con num_rows="dynamic"
                 df_modificado = st.data_editor(df_editable, column_config=configuracion_columnas, use_container_width=True, hide_index=True, num_rows="dynamic", key="editor_tabla_master")
                 if st.button("💾 CONFIRMAR Y GUARDAR CAMBIOS EN LA MATRIZ", type="primary", use_container_width=True):
                     st.session_state.actividades = df_modificado
@@ -720,278 +823,273 @@ elif opcion_menu == "🔐 Panel Administrador":
                         st.success("¡Importado!"); st.rerun()
                     except Exception as e_b: st.error(f"Error: {e_b}")
 
-elif opcion_menu == "👑 Reglas de Liderazgo":
-    st.markdown('<h2 style="color: #EC2024; font-weight: bold; margin-bottom: 20px;">👑 REGLAS DE LIDERAZGO: PLANTA METALES</h2>', unsafe_allow_html=True)
-    st.write("Guía oficial de comportamiento, gestión y control en piso de producción.")
-    st.write("---")
+    elif opcion_menu == "👑 Reglas de Liderazgo":
+        st.markdown('<h2 style="color: #EC2024; font-weight: bold; margin-bottom: 20px;">👑 REGLAS DE LIDERAZGO: PLANTA METALES</h2>', unsafe_allow_html=True)
+        st.write("Guía oficial de comportamiento, gestión y control en piso de producción.")
+        st.write("---")
 
-    col_l1, col_l2 = st.columns(2)
+        col_l1, col_l2 = st.columns(2)
 
-    with col_l1:
-        with st.expander("🪵 Liderazgo y Comportamiento en Piso", expanded=True):
-            st.markdown("""
-            1. **Predica con el ejemplo:** Cumple las normas de seguridad, puntualidad y vestimenta antes que nadie.
-            2. **Lidera desde el Gemba:** Pasa el 80% de tu tiempo en el piso de producción, no en la oficina.
-            3. **Corrige en privado, reconoce en público:** Protege la dignidad de tu personal y celebra sus éxitos frente al grupo.
-            4. **Escucha antes de juzgar:** Investiga la causa raíz de un problema antes de buscar culpables.
-            5. **Mantén la consistencia:** Aplica las reglas y sanciones de manera justa, equitativa y sin favoritismos.
-            """, unsafe_allow_html=True)
+        with col_l1:
+            with st.expander("🪵 Liderazgo y Comportamiento en Piso", expanded=True):
+                st.markdown("""
+                1. **Predica con el ejemplo:** Cumple las normas de seguridad, puntualidad y vestimenta antes que nadie.
+                2. **Lidera desde el Gemba:** Pasa el 80% de tu tiempo en el piso de producción, no en la oficina.
+                3. **Corrige en privado, reconoce en público:** Protege la dignidad de tu personal y celebra sus éxitos frente al grupo.
+                4. **Escucha antes de juzgar:** Investiga la causa raíz de un problema antes de buscar culpables.
+                5. **Mantén la consistencia:** Aplica las reglas y sanciones de manera justa, equitativa y sin favoritismos.
+                """, unsafe_allow_html=True)
 
-        with st.expander("💼 Operación y Gestión del Personal", expanded=True):
-            st.markdown("""
-            1. **Cero tolerancia al ocio:** Asegura que cada operador tenga una tarea asignada en todo momento.
-            2. **Activa el plan B de inmediato:** Si la producción se detiene, reasigna al personal a actividades secundarias (5S, capacitación, mantenimiento).
-            3. **Informa desviaciones a Dirección:** Reporta al final del turno cualquier falta de actividad programada y justifica el uso del tiempo.
-            4. **Capacita constantemente:** Desarrollar la polivalencia de tu equipo reduce la dependencia de personas específicas.
-            5. **La seguridad es primero:** Detén cualquier operación que ponga en riesgo la integridad física del personal.
-            """, unsafe_allow_html=True)
+            with st.expander("💼 Operación y Gestión del Personal", expanded=True):
+                st.markdown("""
+                1. **Cero tolerancia al ocio:** Asegura que cada operador tenga una tarea asignada en todo momento.
+                2. **Activa el plan B de inmediato:** Si la producción se detiene, reasigna al personal a actividades secundarias (5S, capacitación, mantenimiento).
+                3. **Informa desviaciones a Dirección:** Reporta al final del turno cualquier falta de actividad programada y justifica el uso del tiempo.
+                4. **Capacita constantemente:** Desarrollar la polivalencia de tu equipo reduce la dependencia de personas específicas.
+                5. **La seguridad es primero:** Detén cualquier operación que ponga en riesgo la integridad física del personal.
+                """, unsafe_allow_html=True)
 
-    with col_l2:
-        with st.expander("📢 Comunicación y Relaciones Interdepartamentales", expanded=True):
-            st.markdown("""
-            1. **Arranca con juntas Tier 1:** Realiza reuniones de 5 minutos al inicio del turno para alinear metas y riesgos.
-            2. **Comunícate con datos:** Al solicitar apoyo a Calidad o Mantenimiento, habla con números y hechos, no con opiniones.
-            3. **Define el 'para cuándo':** Al delegar o solicitar una tarea a otra jefatura, establece siempre una fecha y hora límite.
-            4. **Cierra el ciclo de comunicación:** Confirma que el receptor entendió el mensaje pidiéndole que lo explique con sus palabras.
-            5. **Fomenta las ideas de mejora:** Escucha y canaliza las propuestas de los operadores para optimizar los procesos.
-            """, unsafe_allow_html=True)
+        with col_l2:
+            with st.expander("📢 Comunicación y Relaciones Interdepartamentales", expanded=True):
+                st.markdown("""
+                1. **Arranca con juntas Tier 1:** Realiza reuniones de 5 minutos al inicio del turno para alinear metas y riesgos.
+                2. **Comunícate con datos:** Al solicitar apoyo a Calidad o Mantenimiento, habla con números y hechos, no con opiniones.
+                3. **Define el 'para cuándo':** Al delegar o solicitar una tarea a otra jefatura, establece siempre una fecha y hora límite.
+                4. **Cierra el ciclo de comunicación:** Confirma que el receptor entendió el mensaje pidiéndole que lo explique con sus palabras.
+                5. **Fomenta las ideas de mejora:** Escucha y canaliza las propuestas de los operadores para optimizar los procesos.
+                """, unsafe_allow_html=True)
 
-        with st.expander("🎯 Delegación y Control", expanded=True):
-            st.markdown("""
-            1. **Delega con base en la habilidad:** Asigna las tareas críticas al personal que ya demostró la competencia para resolverlas.
-            2. **Sigue el rastro, no microgestiones:** Define puntos de revisión intermedios en lugar de vigilar cada paso del proceso.
-            3. **Entrega recursos completos:** Al delegar, asegura que la persona tenga la herramienta, la información y el tiempo necesarios.
-            4. **Asume la responsabilidad final:** Si tu equipo falla, tú eres el responsable ante la Dirección; no culpes a tus subordinados.
-            5. **Estandariza los éxitos:** Cuando una solución funcione, documenta el nuevo método para que se convierta en la regla oficial.
-            """, unsafe_allow_html=True)
+            with st.expander("🎯 Delegación y Control", expanded=True):
+                st.markdown("""
+                1. **Delega con base en la habilidad:** Asigna las tareas críticas al personal que ya demostró la competencia para resolverlas.
+                2. **Sigue el rastro, no microgestiones:** Define puntos de revisión intermedios en lugar de vigilar cada paso del proceso.
+                3. **Entrega recursos completos:** Al delegar, asegura que la persona tenga la herramienta, la información y el tiempo necesarios.
+                4. **Asume la responsabilidad final:** Si tu equipo falla, tú eres el responsable ante la Dirección; no culpes a tus subordinados.
+                5. **Estandariza los éxitos:** Cuando una solución funcione, documenta el nuevo método para que se convierta en la regla oficial.
+                """, unsafe_allow_html=True)
 
-elif opcion_menu == "📋 Reportes PDF":
-    st.subheader("🛠️ Generación de Reportes Ejecutivos")
-    st.write("Selecciona los filtros requeridos para estructurar los reportes de la planta:")
-    st.write("---")
-    
-    col_rep1, col_rep2, col_rep3 = st.columns(3)
-    with col_rep1: 
-        area_rep = st.selectbox("Filtrar por Área", ["Todas"] + st.session_state.areas, key="pdf_area")
-    with col_rep2: 
-        resp_rep = st.selectbox("Filtrar por Responsable", ["Todos"] + list(st.session_state.personal.keys()), key="pdf_resp")
-    with col_rep3:
-        rango_tiempo = st.selectbox(
-            "Rango de Fecha Compromiso", 
-            ["Cualquier Fecha Límite", "Esta Semana", "Próximas 2 Semanas", "Próximas 3 Semanas", "Próximas 4 Semanas"], 
-            key="pdf_tiempo"
-        )
-    df_rep = pd.DataFrame(st.session_state.actividades)
-    if not df_rep.empty:
-        if area_rep != "Todas": 
-            df_rep = df_rep[df_rep["Area"] == area_rep]
-        if resp_rep != "Todos": 
-            df_rep = df_rep[df_rep["Responsable"] == resp_rep]
-            
-        df_todas_pendientes = df_rep[df_rep["% Avance"].astype(int) < 100].copy()
-        df_todas_terminadas = df_rep[df_rep["% Avance"].astype(int) == 100].copy()
+    elif opcion_menu == "📋 Reportes PDF":
+        st.subheader("🛠️ Generación de Reportes Ejecutivos")
+        st.write("Selecciona los filtros requeridos para estructurar los reportes de la planta:")
+        st.write("---")
         
-        if rango_tiempo != "Cualquier Fecha Límite":
-            hoy = datetime.now().date()
-            if rango_tiempo == "Esta Semana": dias_limite = 7
-            elif rango_tiempo == "Próximas 2 Semanas": dias_limite = 14
-            elif rango_tiempo == "Próximas 3 Semanas": dias_limite = 21
-            elif rango_tiempo == "Próximas 4 Semanas": dias_limite = 28
+        col_rep1, col_rep2, col_rep3 = st.columns(3)
+        with col_rep1: 
+            area_rep = st.selectbox("Filtrar por Área", ["Todas"] + st.session_state.areas, key="pdf_area")
+        with col_rep2: 
+            resp_rep = st.selectbox("Filtrar por Responsable", ["Todos"] + list(st.session_state.personal.keys()), key="pdf_resp")
+        with col_rep3:
+            rango_tiempo = st.selectbox(
+                "Rango de Fecha Compromiso", 
+                ["Cualquier Fecha Límite", "Esta Semana", "Próximas 2 Semanas", "Próximas 3 Semanas", "Próximas 4 Semanas"], 
+                key="pdf_tiempo"
+            )
+        df_rep = pd.DataFrame(st.session_state.actividades)
+        if not df_rep.empty:
+            if area_rep != "Todas": 
+                df_rep = df_rep[df_rep["Area"] == area_rep]
+            if resp_rep != "Todos": 
+                df_rep = df_rep[df_rep["Responsable"] == resp_rep]
                 
-            fecha_maxima = hoy + timedelta(days=dias_limite)
+            df_todas_pendientes = df_rep[df_rep["% Avance"].astype(int) < 100].copy()
+            df_todas_terminadas = df_rep[df_rep["% Avance"].astype(int) == 100].copy()
             
-            def evaluar_rango_fecha(fecha_str):
-                try:
-                    if not fecha_str or str(fecha_str).strip() in ["None", "nan", ""]: return False
-                    f_dt = datetime.strptime(str(fecha_str).strip(), "%d-%b-%y").date()
-                    return f_dt <= fecha_maxima
-                except: return False
+            if rango_tiempo != "Cualquier Fecha Límite":
+                hoy = datetime.now().date()
+                if rango_tiempo == "Esta Semana": dias_limite = 7
+                elif rango_tiempo == "Próximas 2 Semanas": dias_limite = 14
+                elif rango_tiempo == "Próximas 3 Semanas": dias_limite = 21
+                elif rango_tiempo == "Próximas 4 Semanas": dias_limite = 28
                     
-            if not df_todas_pendientes.empty:
-                df_todas_pendientes = df_todas_pendientes[df_todas_pendientes["Fecha Compromiso"].apply(evaluar_rango_fecha)]
-            if not df_todas_terminadas.empty:
-                df_todas_terminadas = df_todas_terminadas[df_todas_terminadas["Fecha Compromiso"].apply(evaluar_rango_fecha)]
+                fecha_maxima = hoy + timedelta(days=dias_limite)
                 
-        st.write("### 📊 Vista Previa en Plataforma")
-        c_p1, c_p2 = st.columns(2)
-        c_p1.metric("Tareas Pendientes Encontradas", len(df_todas_pendientes))
-        c_p2.metric("Tareas Terminadas Encontradas", len(df_todas_terminadas))
-        
-        if not df_todas_pendientes.empty or not df_todas_terminadas.empty:
-            if not df_todas_pendientes.empty:
-                st.write("**Pendientes Actuales:**")
-                st.dataframe(df_todas_pendientes[["No", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso"]], use_container_width=True, hide_index=True)
-            if not df_todas_terminadas.empty:
-                st.write("**Terminadas Recientes:**")
-                st.dataframe(df_todas_terminadas[["No", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso"]], use_container_width=True, hide_index=True)
-            st.write("---")
+                def evaluar_rango_fecha(fecha_str):
+                    try:
+                        if not fecha_str or str(fecha_str).strip() in ["None", "nan", ""]: return False
+                        f_dt = datetime.strptime(str(fecha_str).strip(), "%d-%b-%y").date()
+                        return f_dt <= fecha_maxima
+                    except: return False
+                        
+                if not df_todas_pendientes.empty:
+                    df_todas_pendientes = df_todas_pendientes[df_todas_pendientes["Fecha Compromiso"].apply(evaluar_rango_fecha)]
+                if not df_todas_terminadas.empty:
+                    df_todas_terminadas = df_todas_terminadas[df_todas_terminadas["Fecha Compromiso"].apply(evaluar_rango_fecha)]
+                    
+            st.write("### 📊 Vista Previa en Plataforma")
+            c_p1, c_p2 = st.columns(2)
+            c_p1.metric("Tareas Pendientes Encontradas", len(df_todas_pendientes))
+            c_p2.metric("Tareas Terminadas Encontradas", len(df_todas_terminadas))
             
-            # --- MOTOR INTERNO DE IMPRESIÓN PDF ---
-            def creador_documento_pdf(df_datos, es_bloque_pendientes, area_txt, resp_txt, tiempo_txt):
-                from fpdf import FPDF
-                pdf = FPDF(orientation="L", unit="mm", format="A4")
-                pdf.set_auto_page_break(auto=True, margin=15)
-                pdf.add_page()
+            if not df_todas_pendientes.empty or not df_todas_terminadas.empty:
+                if not df_todas_pendientes.empty:
+                    st.write("**Pendientes Actuales:**")
+                    st.dataframe(df_todas_pendientes[["No", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso"]], use_container_width=True, hide_index=True)
+                if not df_todas_terminadas.empty:
+                    st.write("**Terminadas Recientes:**")
+                    st.dataframe(df_todas_terminadas[["No", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso"]], use_container_width=True, hide_index=True)
+                st.write("---")
                 
-                # Encabezado corporativo principal
-                pdf.set_font("Helvetica", "B", 16)
-                pdf.set_text_color(12, 35, 64)
-                pdf.cell(0, 10, txt="PLANTA METALES Y MAQUINADOS", ln=True, align="C")
-                pdf.set_font("Helvetica", "B", 12)
-                
-                tipo_reporte = "REPORTE DE ACTIVIDADES PENDIENTES" if es_bloque_pendientes else "REPORTE DE ACTIVIDADES TERMINADAS"
-                pdf.cell(0, 8, txt=tipo_reporte, ln=True, align="C")
-                
-                # Sanitizar textos usando el limpiador para evitar errores
-                area_txt_limpio = limpiar_para_pdf(area_txt)
-                resp_txt_limpio = limpiar_para_pdf(resp_txt)
-                tiempo_txt_limpio = limpiar_para_pdf(tiempo_txt)
-                
-                pdf.set_font("Helvetica", "I", 9)
-                pdf.set_text_color(80, 80, 80)
-                pdf.cell(0, 5, txt=f"Filtros: Area ({area_txt_limpio}) | Responsable ({resp_txt_limpio}) | Periodo ({tiempo_txt_limpio})", ln=True, align="C")
-                pdf.cell(0, 5, txt=f"Generado el: {datetime.now().strftime('%d-%b-%y %H:%M')}", ln=True, align="C")
-                pdf.ln(3)
-                
-                pdf.set_draw_color(12, 35, 64)
-                pdf.line(10, pdf.get_y(), 285, pdf.get_y())
-                pdf.ln(4)
-                
-                # Agrupación y Segmentación por Área de Piso
-                groups = df_datos.groupby("Area")
-                for area_name, gp in groups:
-                    a_limpio = limpiar_para_pdf(area_name)
-                    pdf.set_font("Helvetica", "B", 10.5)
+                def creador_documento_pdf(df_datos, es_bloque_pendientes, area_txt, resp_txt, tiempo_txt):
+                    from fpdf import FPDF
+                    pdf = FPDF(orientation="L", unit="mm", format="A4")
+                    pdf.set_auto_page_break(auto=True, margin=15)
+                    pdf.add_page()
+                    
+                    pdf.set_font("Helvetica", "B", 16)
                     pdf.set_text_color(12, 35, 64)
-                    pdf.cell(0, 6, txt=f">> AREA: {a_limpio.upper()}", ln=True)
+                    pdf.cell(0, 10, txt="PLANTA METALES Y MAQUINADOS", ln=True, align="C")
+                    pdf.set_font("Helvetica", "B", 12)
                     
-                    pdf.set_font("Helvetica", "B", 9)
-                    pdf.set_fill_color(207, 216, 220)
-                    pdf.cell(15, 6, txt="No", border=1, fill=True, align="C")
-                    pdf.cell(50, 6, txt="Responsable", border=1, fill=True)
-                    pdf.cell(145, 6, txt="Descripción de la Actividad", border=1, fill=True)
+                    tipo_reporte = "REPORTE DE ACTIVIDADES PENDIENTES" if es_bloque_pendientes else "REPORTE DE ACTIVIDADES TERMINADAS"
+                    pdf.cell(0, 8, txt=tipo_reporte, ln=True, align="C")
                     
-                    col_estatus = "Avance" if es_bloque_pendientes else "Estatus"
-                    pdf.cell(25, 6, txt=col_estatus, border=1, fill=True, align="C")
+                    area_txt_limpio = limpiar_para_pdf(area_txt)
+                    resp_txt_limpio = limpiar_para_pdf(resp_txt)
+                    tiempo_txt_limpio = limpiar_para_pdf(tiempo_txt)
                     
-                    col_fecha = "Fecha Límite" if es_bloque_pendientes else "Fecha Cierre"
-                    pdf.cell(40, 6, txt=col_fecha, border=1, fill=True, ln=True)
+                    pdf.set_font("Helvetica", "I", 9)
+                    pdf.set_text_color(80, 80, 80)
+                    pdf.cell(0, 5, txt=f"Filtros: Area ({area_txt_limpio}) | Responsable ({resp_txt_limpio}) | Periodo ({tiempo_txt_limpio})", ln=True, align="C")
+                    pdf.cell(0, 5, txt=f"Generado el: {datetime.now().strftime('%d-%b-%y %H:%M')}", ln=True, align="C")
+                    pdf.ln(3)
                     
-                    pdf.set_font("Helvetica", "", 8.5)
-                    pdf.set_text_color(0, 0, 0)
-                    for _, fila in gp.iterrows():
-                        desc_cruda = str(fila["Descripcion"])
-                        d_corta = desc_cruda[:82] + "..." if len(desc_cruda) > 85 else desc_cruda
-                        r_limpio = limpiar_para_pdf(fila["Responsable"])
-                        d_corta = limpiar_para_pdf(d_corta)
-                        
-                        if es_bloque_pendientes:
-                            pdf.set_fill_color(255, 243, 205) # Amarillo suave
-                            txt_avance = f"{fila['% Avance']}%"
-                        else:
-                            pdf.set_fill_color(212, 237, 218) # Verde suave
-                            txt_avance = "Listo 100%"
-                        
-                        pdf.cell(15, 6, txt=str(fila["No"]), border=1, align="C")
-                        pdf.cell(50, 6, txt=r_limpio[:25], border=1)
-                        pdf.cell(145, 6, txt=d_corta, border=1)
-                        pdf.cell(25, 6, txt=txt_avance, border=1, fill=True, align="C")
-                        pdf.cell(40, 6, txt=str(fila["Fecha Compromiso"]), border=1, ln=True)
+                    pdf.set_draw_color(12, 35, 64)
+                    pdf.line(10, pdf.get_y(), 285, pdf.get_y())
                     pdf.ln(4)
                     
-                return pdf.output()
+                    groups = df_datos.groupby("Area")
+                    for area_name, gp in groups:
+                        a_limpio = limpiar_para_pdf(area_name)
+                        pdf.set_font("Helvetica", "B", 10.5)
+                        pdf.set_text_color(12, 35, 64)
+                        pdf.cell(0, 6, txt=f">> AREA: {a_limpio.upper()}", ln=True)
+                        
+                        pdf.set_font("Helvetica", "B", 9)
+                        pdf.set_fill_color(207, 216, 220)
+                        pdf.cell(15, 6, txt="No", border=1, fill=True, align="C")
+                        pdf.cell(50, 6, txt="Responsable", border=1, fill=True)
+                        pdf.cell(145, 6, txt="Descripción de la Actividad", border=1, fill=True)
+                        
+                        col_estatus = "Avance" if es_bloque_pendientes else "Estatus"
+                        pdf.cell(25, 6, txt=col_estatus, border=1, fill=True, align="C")
+                        
+                        col_fecha = "Fecha Límite" if es_bloque_pendientes else "Fecha Cierre"
+                        pdf.cell(40, 6, txt=col_fecha, border=1, fill=True, ln=True)
+                        
+                        pdf.set_font("Helvetica", "", 8.5)
+                        pdf.set_text_color(0, 0, 0)
+                        for _, fila in gp.iterrows():
+                            desc_cruda = str(fila["Descripcion"])
+                            d_corta = desc_cruda[:82] + "..." if len(desc_cruda) > 85 else desc_cruda
+                            r_limpio = limpiar_para_pdf(fila["Responsable"])
+                            d_corta = limpiar_para_pdf(d_corta)
+                            
+                            if es_bloque_pendientes:
+                                pdf.set_fill_color(255, 243, 205)
+                                txt_avance = f"{fila['% Avance']}%"
+                            else:
+                                pdf.set_fill_color(212, 237, 218)
+                                txt_avance = "Listo 100%"
+                            
+                            pdf.cell(15, 6, txt=str(fila["No"]), border=1, align="C")
+                            pdf.cell(50, 6, txt=r_limpio[:25], border=1)
+                            pdf.cell(145, 6, txt=d_corta, border=1)
+                            pdf.cell(25, 6, txt=txt_avance, border=1, fill=True, align="C")
+                            pdf.cell(40, 6, txt=str(fila["Fecha Compromiso"]), border=1, ln=True)
+                        pdf.ln(4)
+                        
+                    return pdf.output()
 
-            st.write("### 📥 Descarga de Archivos")
-            col_btn1, col_btn2 = st.columns(2)
-            
-            with col_btn1:
-                if not df_todas_pendientes.empty:
-                    try:
-                        bytes_pend = creador_documento_pdf(df_todas_pendientes, True, area_rep, resp_rep, rango_tiempo)
-                        st.download_button(
-                            label="⚠️ Descargar Reporte de Pendientes (PDF)",
-                            data=bytes(bytes_pend),
-                            file_name=f"Reporte_PENDIENTES_{datetime.now().strftime('%d-%b-%y')}.pdf",
-                            mime="application/pdf",
-                            use_container_width=True
-                        )
-                    except Exception as e_p:
-                        st.error(f"Error en PDF de pendientes: {e_p}")
-                else:
-                    st.info("No hay tareas pendientes para exportar con estos filtros.")
-                    
-            with col_btn2:
-                if not df_todas_terminadas.empty:
-                    try:
-                        bytes_term = creador_documento_pdf(df_todas_terminadas, False, area_rep, resp_rep, rango_tiempo)
-                        st.download_button(
-                            label="✅ Descargar Reporte de Terminadas (PDF)",
-                            data=bytes(bytes_term),
-                            file_name=f"Reporte_TERMINADAS_{datetime.now().strftime('%d-%b-%y')}.pdf",
-                            mime="application/pdf",
-                            use_container_width=True
-                        )
-                    except Exception as e_t:
-                        st.error(f"Error en PDF de terminadas: {e_t}")
-                else:
-                    st.info("No hay tareas terminadas para exportar con estos filtros.")
+                st.write("### 📥 Descarga de Archivos")
+                col_btn1, col_btn2 = st.columns(2)
+                
+                with col_btn1:
+                    if not df_todas_pendientes.empty:
+                        try:
+                            bytes_pend = creador_documento_pdf(df_todas_pendientes, True, area_rep, resp_rep, rango_tiempo)
+                            st.download_button(
+                                label="⚠️ Descargar Reporte de Pendientes (PDF)",
+                                data=bytes(bytes_pend),
+                                file_name=f"Reporte_PENDIENTES_{datetime.now().strftime('%d-%b-%y')}.pdf",
+                                mime="application/pdf",
+                                use_container_width=True
+                            )
+                        except Exception as e_p:
+                            st.error(f"Error en PDF de pendientes: {e_p}")
+                    else:
+                        st.info("No hay tareas pendientes para exportar con estos filtros.")
+                        
+                with col_btn2:
+                    if not df_todas_terminadas.empty:
+                        try:
+                            bytes_term = creador_documento_pdf(df_todas_terminadas, False, area_rep, resp_rep, rango_tiempo)
+                            st.download_button(
+                                label="✅ Descargar Reporte de Terminadas (PDF)",
+                                data=bytes(bytes_term),
+                                file_name=f"Reporte_TERMINADAS_{datetime.now().strftime('%d-%b-%y')}.pdf",
+                                mime="application/pdf",
+                                use_container_width=True
+                            )
+                        except Exception as e_t:
+                            st.error(f"Error en PDF de terminadas: {e_t}")
+                    else:
+                        st.info("No hay tareas terminadas para exportar con estos filtros.")
+            else:
+                st.success("🎉 ¡Sin movimientos! No hay actividades registradas en los parámetros seleccionados.")
         else:
-            st.success("🎉 ¡Sin movimientos! No hay actividades registradas en los parámetros seleccionados.")
-    else:
-        st.info("La base de datos se encuentra vacía.")
+            st.info("La base de datos se encuentra vacía.")
 
-# NUEVA SECCIÓN: MANUFACTURA INTELIGENTE & INDUSTRIA 4.0
-elif opcion_menu == "🏭 Industria 4.0 & Stack":
-    st.markdown('<h2 style="color: #EC2024; font-weight: bold; margin-bottom: 5px; font-family: \'Montserrat\', sans-serif;">🏭 MANUFACTURA INTELIGENTE E INDUSTRIA 4.0</h2>', unsafe_allow_html=True)
-    st.markdown('<p style="font-family: \'Montserrat\', sans-serif; font-size: 16px; font-weight: bold; color: #111111; margin-bottom: 20px; text-transform: uppercase;">SOLUCIONES QUE TRANSFORMAN TU EMPRESA</p>', unsafe_allow_html=True)
-    st.write("---")
-    
-    col_ind1, col_ind2 = st.columns(2)
-    
-    with col_ind1:
-        with st.expander("📝 Justificación de Manufactura Inteligente", expanded=True):
-            st.markdown("""
-            En la era de la **Industria 4.0**, la digitalización de piso de producción (**Gemba**) es clave para maximizar la productividad y responder ágilmente a contingencias. 
-            La **Matriz de Comunicación Efectiva (MCE)** de Planta Metales y Maquinados sustituye los flujos de papel y hojas de cálculo locales por una plataforma web reactiva y centralizada.
-            
-            *   **Eliminación de Silos de Información**: Toda la planta visualiza el mismo estado en tiempo real, desde operadores hasta la dirección.
-            *   **Reducción de Tiempos Muertos**: La comunicación instantánea de desviaciones agiliza la respuesta de mantenimiento, calidad e ingeniería.
-            *   **Decisiones Basadas en Datos**: Reemplaza opiniones subjetivas con gráficos de Pareto de tareas y tiempos de vencimiento reales.
-            """)
-            
-        with st.expander("🚀 Beneficios Estratégicos del Proyecto", expanded=True):
-            st.markdown("""
-            *   **Trazabilidad y Calidad**: El cierre de tareas (100%) requiere evidencia fotográfica obligatoria, asegurando la verificación física de los trabajos en piso.
-            *   **Sincronización en la Nube**: Integración automática mediante la API de GitHub para respaldar el archivo maestro Excel de forma segura e inmediata.
-            *   **Monitoreo de Líderes**: Identificación visual del avance promedio y eficiencia por responsable directo para equilibrar la carga de trabajo.
-            *   **Cero Papel**: Reducción de costos de impresión y archivado físico, apoyando iniciativas sustentables.
-            """)
-            
-    with col_ind2:
-        with st.expander("🛠️ Resumen del Stack Tecnológico", expanded=True):
-            st.markdown("""
-            La aplicación está construida sobre un stack tecnológico moderno, ligero y de alta velocidad:
-            
-            1.  **Frontend & Logic**: **Streamlit (Python)**, que permite interfaces dinámicas y renderización reactiva de datos.
-            2.  **Base de Datos**: **Pandas + Excel (Openpyxl)**, facilitando la edición interactiva directa en piso y la persistencia de datos tradicional.
-            3.  **Visualizaciones**: **Plotly**, generando gráficos de Pareto e indicadores de rendimiento interactivos.
-            4.  **Generación de PDF**: **FPDF2**, optimizado para reportes corporativos estructurados con soporte de caracteres en español.
-            5.  **Control de Versiones & API**: **GitHub API REST**, respaldando la matriz Excel en la nube de forma transparente y encriptada.
-            """)
-            
-        with st.expander("🔐 Guía de Acceso (Usuarios y Contraseñas)", expanded=True):
-            st.markdown("""
-            A continuación se detallan los perfiles autorizados para operar la plataforma:
-            
-            *   **Colaboradores / Operadores (Lectura y Avances)**:
-                *   *Usuarios*: Jesús Morales, Cruz Carreón, Luis Quintana, Bryan Flores, Rodolfo Fernández M., etc.
-                *   *Acceso*: Libre. Permite ajustar porcentaje de avances en barra de progreso rápida, comentar la bitácora y subir fotos de evidencia.
-            *   **Carga de Actividades (Usuario)**:
-                *   *Acceso*: Protegido por contraseña.
-                *   *Contraseña*: `Metales`
-                *   *Permisos*: Crear y registrar nuevas actividades en el catálogo.
-            *   **Administrador (Máster)**:
-                *   *Acceso*: Protegido por contraseña máster.
-                *   *Contraseña*: `SigramaMetales2026`
-                *   *Permisos*: Registro de nuevos colaboradores, importación de plantilla masiva, sincronización manual/respaldo en GitHub y **edición en caliente / borrado físico de registros** (Solo el Administrador cuenta con estos permisos).
-            """)
+    elif opcion_menu == "🏭 Industria 4.0 & Stack":
+        st.markdown('<h2 style="color: #EC2024; font-weight: bold; margin-bottom: 5px; font-family: \'Montserrat\', sans-serif;">🏭 MANUFACTURA INTELIGENTE E INDUSTRIA 4.0</h2>', unsafe_allow_html=True)
+        st.markdown('<p style="font-family: \'Montserrat\', sans-serif; font-size: 16px; font-weight: bold; color: #111111; margin-bottom: 20px; text-transform: uppercase;">SOLUCIONES QUE TRANSFORMAN TU EMPRESA</p>', unsafe_allow_html=True)
+        st.write("---")
+        
+        col_ind1, col_ind2 = st.columns(2)
+        
+        with col_ind1:
+            with st.expander("📝 Justificación de Manufactura Inteligente", expanded=True):
+                st.markdown("""
+                En la era de la **Industria 4.0**, la digitalización de piso de producción (**Gemba**) es clave para maximizar la productividad y responder ágilmente a contingencias. 
+                La **Matriz de Comunicación Efectiva (MCE)** de Planta Metales y Maquinados sustituye los flujos de papel y hojas de cálculo locales por una plataforma web reactiva y centralizada.
+                
+                *   **Eliminación de Silos de Información**: Toda la planta visualiza el mismo estado en tiempo real, desde operadores hasta la dirección.
+                *   **Reducción de Tiempos Muertos**: La comunicación instantánea de desviaciones agiliza la respuesta de mantenimiento, calidad e ingeniería.
+                *   **Decisiones Basadas en Datos**: Reemplaza opiniones subjetivas con gráficos de Pareto de tareas y tiempos de vencimiento reales.
+                """)
+                
+            with st.expander("🚀 Beneficios Estratégicos del Proyecto", expanded=True):
+                st.markdown("""
+                *   **Trazabilidad y Calidad**: El cierre de tareas (100%) requiere evidencia fotográfica obligatoria, asegurando la verificación física de los trabajos en piso.
+                *   **Sincronización en la Nube**: Integración automática mediante la API de GitHub para respaldar el archivo maestro Excel de forma segura e inmediata.
+                *   **Monitoreo de Líderes**: Identificación visual del avance promedio y eficiencia por responsable directo para equilibrar la carga de trabajo.
+                *   **Cero Papel**: Reducción de costos de impresión y archivado físico, apoyando iniciativas sustentables.
+                """)
+                
+        with col_ind2:
+            with st.expander("🛠️ Resumen del Stack Tecnológico", expanded=True):
+                st.markdown("""
+                La aplicación está construida sobre un stack tecnológico moderno, ligero y de alta velocidad:
+                
+                1.  **Frontend & Logic**: **Streamlit (Python)**, que permite interfaces dinámicas y renderización reactiva de datos.
+                2.  **Base de Datos**: **Pandas + Excel (Openpyxl)**, facilitando la edición interactiva directa en piso y la persistencia de datos tradicional.
+                3.  **Visualizaciones**: **Plotly**, generando gráficos de Pareto e indicadores de rendimiento interactivos.
+                4.  **Generación de PDF**: **FPDF2**, optimizado para reportes corporativos estructurados con soporte de caracteres en español.
+                5.  **Control de Versiones & API**: **GitHub API REST**, respaldando la matriz Excel en la nube de forma transparente y encriptada.
+                """)
+                
+            with st.expander("🔐 Guía de Acceso (Usuarios y Contraseñas)", expanded=True):
+                st.markdown("""
+                A continuación se detallan los perfiles autorizados para operar la plataforma:
+                
+                *   **Colaboradores / Operadores (Lectura y Avances)**:
+                    *   *Usuarios*: Jesús Morales, Cruz Carreón, Luis Quintana, Bryan Flores, Rodolfo Fernández M., etc.
+                    *   *Acceso*: Libre. Permite ajustar porcentaje de avances en barra de progreso rápida, comentar la bitácora y subir fotos de evidencia.
+                *   **Carga de Actividades (Usuario)**:
+                    *   *Acceso*: Protegido por contraseña.
+                    *   *Contraseña*: `Metales`
+                    *   *Permisos*: Crear y registrar nuevas actividades en el catálogo.
+                *   **Administrador (Máster)**:
+                    *   *Acceso*: Protegido por contraseña máster.
+                    *   *Contraseña*: `SigramaMetales2026`
+                    *   *Permisos*: Registro de nuevos colaboradores, importación de plantilla masiva, sincronización manual/respaldo en GitHub y **edición en caliente / borrado físico de registros** (Solo el Administrador cuenta con estos permisos).
+                """)
