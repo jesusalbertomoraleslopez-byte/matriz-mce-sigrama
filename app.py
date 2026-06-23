@@ -23,10 +23,23 @@ Image.MAX_IMAGE_PIXELS = None
 def normalizar_texto(texto):
     if not texto:
         return ""
+    texto_limpio = " ".join(str(texto).split())
     return "".join(
-        c for c in unicodedata.normalize('NFD', str(texto).lower().strip())
+        c for c in unicodedata.normalize('NFD', texto_limpio.lower())
         if unicodedata.category(c) != 'Mn'
     )
+
+# Helper para intentar parsear fechas en formatos mixtos
+def intentar_parsear_fecha(fecha_str):
+    if not fecha_str or str(fecha_str).strip().lower() in ["none", "nan", ""]:
+        return None
+    date_str = str(fecha_str).strip()
+    for fmt in ["%d-%b-%y", "%Y-%m-%d", "%d/%m/%Y", "%Y-%m-%d %H:%M:%S", "%d-%m-%Y"]:
+        try:
+            return datetime.strptime(date_str, fmt)
+        except ValueError:
+            pass
+    return None
 
 # Helper para cargar catálogos desde catalogos.json con fallbacks corregidos
 def cargar_catalogos():
@@ -368,13 +381,15 @@ if not st.session_state.logged_in:
                     colaborador_encontrado = name
                     break
             
-            if username_norm in ["admin", "administrador"] and password_input == "SigramaMetales2026":
+            pwd_clean = password_input.strip()
+            
+            if username_norm in ["admin", "administrador"] and pwd_clean == "SigramaMetales2026":
                 st.session_state.logged_in = True
                 st.session_state.rol = "Administrador"
                 st.session_state.usuario_actual = "Administrador"
                 st.success("Sesión iniciada como Administrador.")
                 st.rerun()
-            elif colaborador_encontrado is not None and password_input == "Metales":
+            elif colaborador_encontrado is not None and pwd_clean.lower() == "metales":
                 st.session_state.logged_in = True
                 st.session_state.rol = "Colaborador"
                 st.session_state.usuario_actual = colaborador_encontrado
@@ -458,9 +473,14 @@ else:
             hoy = datetime.now()
             def clasificar_vencimientos(f):
                 try:
-                    f_comp = datetime.strptime(str(f["Fecha Compromiso"]).strip(), "%d-%b-%y")
-                    return "Vencida (Retraso)" if (int(f["% Avance"]) < 100 and f_comp < hoy) else ("Terminada" if int(f["% Avance"]) == 100 else "Pendiente a Tiempo")
-                except: return "Pendiente a Tiempo"
+                    if int(f["% Avance"]) == 100:
+                        return "Terminada"
+                    f_comp = intentar_parsear_fecha(f["Fecha Compromiso"])
+                    if f_comp is None:
+                        return "Pendiente a Tiempo"
+                    return "Vencida (Retraso)" if f_comp < hoy else "Pendiente a Tiempo"
+                except:
+                    return "Terminada" if int(f["% Avance"]) == 100 else "Pendiente a Tiempo"
             df_lideres["Estado_Real"] = df_lideres.apply(clasificar_vencimientos, axis=1)
             df_lideres["Valor_Eje"] = df_lideres["Estado_Real"].apply(lambda x: -1 if x == "Vencida (Retraso)" else 1)
             
@@ -520,8 +540,8 @@ else:
                     fecha_vencida = False
                     if fecha_comp_str:
                         try:
-                            f_comp = datetime.strptime(fecha_comp_str, "%d-%b-%y")
-                            if f_comp < hoy: fecha_vencida = True
+                            f_comp = intentar_parsear_fecha(fecha_comp_str)
+                            if f_comp and f_comp < hoy: fecha_vencida = True
                         except: pass
                     if num_avance < 100 and fecha_vencida: 
                         return ['background-color: #F8D7DA; color: #721C24; font-weight: 500;'] * len(fila)
@@ -563,8 +583,8 @@ else:
                             
                             es_vencido = False
                             if avance_val < 100 and fecha_comp_str and fecha_comp_str != "None":
-                                from datetime import datetime
-                                if datetime.strptime(fecha_comp_str, "%d-%b-%y") < datetime.now():
+                                f_comp_val = intentar_parsear_fecha(fecha_comp_str)
+                                if f_comp_val and f_comp_val < datetime.now():
                                     es_vencido = True
                             
                             for col_idx in range(1, worksheet.max_column + 1):
@@ -835,7 +855,8 @@ else:
                                 fecha_comp_str = str(ws.cell(row=row_idx, column=idx_compromiso).value).strip()
                                 es_vencido = False
                                 if avance_val < 100 and fecha_comp_str:
-                                    if datetime.strptime(fecha_comp_str, "%d-%b-%y") < hoy_dt: es_vencido = True
+                                    f_comp_val = intentar_parsear_fecha(fecha_comp_str)
+                                    if f_comp_val and f_comp_val < hoy_dt: es_vencido = True
                                 for col_idx in range(1, ws.max_column + 1):
                                     cell = ws.cell(row=row_idx, column=col_idx)
                                     if avance_val < 100 and es_vencido: cell.fill = fill_rojo; cell.font = font_rojo
@@ -1014,8 +1035,9 @@ else:
                 def evaluar_rango_fecha(fecha_str):
                     try:
                         if not fecha_str or str(fecha_str).strip() in ["None", "nan", ""]: return False
-                        f_dt = datetime.strptime(str(fecha_str).strip(), "%d-%b-%y").date()
-                        return f_dt <= fecha_maxima
+                        f_dt_parsed = intentar_parsear_fecha(fecha_str)
+                        if f_dt_parsed is None: return False
+                        return f_dt_parsed.date() <= fecha_maxima
                     except: return False
                         
                 if not df_todas_pendientes.empty:
