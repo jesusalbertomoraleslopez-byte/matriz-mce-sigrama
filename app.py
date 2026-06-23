@@ -458,7 +458,34 @@ else:
             df_lideres["Estado_Real"] = df_lideres.apply(clasificar_vencimientos, axis=1)
             df_lideres["Valor_Eje"] = df_lideres["Estado_Real"].apply(lambda x: -1 if x == "Vencida (Retraso)" else 1)
             
-            fig_l = px.bar(df_lideres, x="Origen", y="Valor_Eje", color="Estado_Real", facet_col="Responsable", facet_col_wrap=2, color_discrete_map={"Terminada": "#2ECC71", "Pendiente a Tiempo": "#FFE600", "Vencida (Retraso)": "#EC2024"}, labels={"Origen": "Clasificación", "Valor_Eje": "Tareas"})
+            fig_l = px.bar(
+                df_lideres, 
+                x="Origen", 
+                y="Valor_Eje", 
+                color="Estado_Real", 
+                facet_col="Responsable", 
+                facet_col_wrap=2, 
+                color_discrete_map={"Terminada": "#2ECC71", "Pendiente a Tiempo": "#FFE600", "Vencida (Retraso)": "#EC2024"}, 
+                labels={
+                    "Origen": "Clasificación", 
+                    "Valor_Eje": "Tareas",
+                    "No": "Actividad Número",
+                    "Descripcion": "Descripción",
+                    "Fecha Inicio": "Fecha Inicio",
+                    "Fecha Compromiso": "Fecha Compromiso",
+                    "% Avance": "Avance",
+                    "Estado_Real": "Estado"
+                },
+                hover_data={
+                    "Valor_Eje": False,
+                    "No": True,
+                    "Descripcion": True,
+                    "Fecha Inicio": True,
+                    "Fecha Compromiso": True,
+                    "% Avance": True,
+                    "Estado_Real": True
+                }
+            )
             fig_l.update_layout(barmode="stack", template="plotly_white", height=600, legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"))
             fig_l.for_each_annotation(lambda a: a.update(text=f"<b>👤 {a.text.split('=')[-1].upper()}</b>", font=dict(size=14, color="#111111")))
             st.plotly_chart(fig_l, use_container_width=True)
