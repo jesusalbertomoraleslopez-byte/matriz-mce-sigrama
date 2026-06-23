@@ -678,18 +678,81 @@ else:
 
     elif opcion_menu == "📥 Cargar Actividades (Usuario)":
         st.subheader("Captura de Nuevas Actividades")
-        # Si ya inició sesión como colaborador o admin, no se le pide reintroducir contraseña
+        
+        # Mostrar resumen de validación si existe
+        if 'last_registered_activity' in st.session_state and st.session_state.last_registered_activity is not None:
+            act = st.session_state.last_registered_activity
+            st.markdown(f"""
+            <div style="background-color: #D4EDDA; border: 1px solid #C3E6CB; color: #155724; padding: 18px; border-radius: 6px; margin-bottom: 20px; font-family: 'Questrial', sans-serif;">
+                <h4 style="margin-top: 0; color: #155724; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 16px;">✅ ¡Actividad Registrada con Éxito y Validada!</h4>
+                <hr style="border: 0.5px solid #C3E6CB; margin: 8px 0;">
+                <p style="margin: 3px 0; font-size: 14px;"><b>No. Actividad:</b> {act['No']}</p>
+                <p style="margin: 3px 0; font-size: 14px;"><b>Fecha de Registro:</b> {act['Fecha']}</p>
+                <p style="margin: 3px 0; font-size: 14px;"><b>Responsable:</b> {act['Responsable']}</p>
+                <p style="margin: 3px 0; font-size: 14px;"><b>Actividad (Descripción):</b> {act['Nombre']}</p>
+                <p style="margin: 3px 0; font-size: 14px; color: #856404; font-weight: bold;">⏳ Tiempo Restante para Ejecutar: {act['Tiempo']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button("Limpiar Notificación", key="btn_clear_notif"):
+                st.session_state.last_registered_activity = None
+                st.rerun()
+
         with st.form("form_usuario_carga"):
             o, p, r, a = st.selectbox("Origen", LISTA_CLASIFICACIONES), st.selectbox("Prioridad", ["Baja", "Media", "Urgente"]), st.selectbox("Responsable", list(st.session_state.personal.keys())), st.selectbox("Área", st.session_state.areas)
             d, f = st.text_area("Descripción"), st.date_input("Fecha Compromiso")
             if st.form_submit_button("Registrar Actividad"):
+                # Calcular tiempo para ejecutar
+                try:
+                    hoy = datetime.now().date()
+                    dias = (f - hoy).days
+                    if dias > 0:
+                        tiempo_ejecutar = f"{dias} días naturales"
+                    elif dias == 0:
+                        tiempo_ejecutar = "Hoy mismo"
+                    else:
+                        tiempo_ejecutar = f"Atrasada por {abs(dias)} días"
+                except Exception as e:
+                    tiempo_ejecutar = "No definido"
+
                 n_id = int(st.session_state.actividades["No"].max() + 1) if not st.session_state.actividades.empty else 1
                 n_f = {"No": n_id, "Origen": o, "Fecha Inicio": datetime.now().strftime("%d-%b-%y"), "Prioridad": p, "Responsable": r, "Area": a, "Descripcion": d, "% Avance": 0, "Fecha Compromiso": f.strftime("%d-%b-%y"), "Comentario": "", "Evidencia": ""}
                 st.session_state.actividades = pd.concat([st.session_state.actividades, pd.DataFrame([n_f])], ignore_index=True)
+                
                 try:
                     st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
-                    st.success("¡Registrada!"); st.rerun()
+                    # Guardar resumen en session_state para mostrar tras rerun
+                    st.session_state.last_registered_activity = {
+                        "No": n_id,
+                        "Fecha": datetime.now().strftime("%d-%b-%y"),
+                        "Responsable": r,
+                        "Nombre": d,
+                        "Tiempo": tiempo_ejecutar
+                    }
+                    st.rerun()
                 except Exception as e_add: st.error(f"Fallo Excel: {e_add}")
+        
+        st.write("---")
+        st.subheader("📋 Lista de Actividades (Últimas Cargadas en Amarillo)")
+        
+        df_mostrar_carga = pd.DataFrame(st.session_state.actividades)
+        if not df_mostrar_carga.empty:
+            # Ordenar por No descendente (últimas cargadas primero)
+            df_mostrar_carga = df_mostrar_carga.sort_values(by="No", ascending=False)
+            
+            # Highlight threshold: las últimas 5 ingresadas (No mayores o iguales al max(No) - 4)
+            limite_no = df_mostrar_carga["No"].max() - 4
+            
+            def destacar_recientes(row):
+                try:
+                    if int(row["No"]) >= limite_no:
+                        return ['background-color: #FFF3CD; color: #856404; font-weight: 500;'] * len(row)
+                except:
+                    pass
+                return [''] * len(row)
+                
+            st.dataframe(df_mostrar_carga[["No", "Origen", "Fecha Inicio", "Prioridad", "Responsable", "Area", "Descripcion", "% Avance", "Fecha Compromiso"]].style.apply(destacar_recientes, axis=1), use_container_width=True, hide_index=True)
+        else:
+            st.info("No hay actividades registradas en el sistema.")
 
     elif opcion_menu == "🔐 Panel Administrador" and st.session_state.rol == "Administrador":
         st.markdown('### Panel de Control Máster')
