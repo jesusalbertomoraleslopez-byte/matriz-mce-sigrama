@@ -56,8 +56,6 @@
             display: none;
         }
     </style>
-    <!-- Cargar la biblioteca oficial de componentes de Streamlit -->
-    <script src="https://cdn.jsdelivr.net/npm/@streamlit/component-lib@1.4.0/dist/streamlit-component-lib.js"></script>
 </head>
 <body>
     <button id="btn-paste" tabindex="0">
@@ -69,12 +67,29 @@
     </div>
 
     <script>
+        // Funciones auxiliares para comunicarse con Streamlit
+        function sendToStreamlit(type, data) {
+            const msg = Object.assign({
+                isStreamlitMessage: true,
+                type: type,
+            }, data);
+            window.parent.postMessage(msg, "*");
+        }
+
+        function setFrameHeight(height) {
+            sendToStreamlit("streamlit:setFrameHeight", { height: height });
+        }
+
+        function returnDataToPython(value) {
+            sendToStreamlit("streamlit:setComponentValue", { value: value });
+        }
+
+        // Elementos del DOM
         const btn = document.getElementById('btn-paste');
         const previewContainer = document.getElementById('preview-container');
         const preview = document.getElementById('preview');
         const status = document.getElementById('status');
 
-        // Función para procesar la imagen
         function processImage(file) {
             const reader = new FileReader();
             reader.onload = function (e) {
@@ -82,21 +97,19 @@
                 preview.src = base64Data;
                 previewContainer.style.display = 'block';
                 status.style.display = 'block';
-                status.innerText = "✅ Imagen cargada del portapapeles";
+                status.innerText = "✅ Imagen cargada";
                 status.style.color = "#2ECC71";
-                btn.innerText = "📋 Cambiar Imagen";
+                btn.innerText = "📋 Cambiar";
                 btn.style.backgroundColor = "#2ECC71";
                 btn.style.borderColor = "#2ECC71";
                 
-                // Redimensionar el frame para la vista previa
-                window.Streamlit.setFrameHeight(135);
-                // Enviar el valor a Streamlit
-                window.Streamlit.setComponentValue(base64Data);
+                setFrameHeight(135);
+                returnDataToPython(base64Data);
             };
             reader.readAsDataURL(file);
         }
 
-        // Listener del click para intentar usar el portapapeles directo
+        // Eventos de pegado
         btn.addEventListener('click', async function() {
             try {
                 const clipboardItems = await navigator.clipboard.read();
@@ -126,7 +139,6 @@
             }
         });
 
-        // Event listener para cuando peguen con Ctrl+V
         document.addEventListener('paste', function(e) {
             const items = (e.clipboardData || e.originalEvent.clipboardData).items;
             let found = false;
@@ -139,16 +151,28 @@
                 }
             }
             if (!found) {
-                btn.innerText = "⚠️ No hay imagen en portapapeles";
+                btn.innerText = "⚠️ No hay imagen";
                 btn.style.backgroundColor = "#E67E22";
                 btn.style.borderColor = "#E67E22";
             }
         });
 
-        // Configuración de la API de Streamlit al renderizar
-        window.Streamlit.events.addEventListener(window.Streamlit.RENDER_EVENT, function(event) {
-            // Establecer la altura por defecto del botón
-            window.Streamlit.setFrameHeight(40);
+        // 1. Inicialización: Le decimos a Streamlit que estamos listos INMEDIATAMENTE
+        sendToStreamlit("streamlit:componentReady", { apiVersion: 1 });
+        
+        // 2. Establecemos la altura inicial
+        setFrameHeight(40);
+
+        // 3. Escuchamos los eventos de renderizado (Streamlit Cloud los envía periódicamente)
+        window.addEventListener("message", function(event) {
+            if (event.data && event.data.type === "streamlit:render") {
+                // Mantenemos la altura si no hay imagen
+                if (previewContainer.style.display !== 'block') {
+                    setFrameHeight(40);
+                } else {
+                    setFrameHeight(135);
+                }
+            }
         });
     </script>
 </body>
