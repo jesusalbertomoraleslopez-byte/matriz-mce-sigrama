@@ -751,11 +751,11 @@ else:
                             nv_co = st.text_input("Comentarios de bitácora:", value=comentario_limpio, key=f"c_{r['No']}")
                             evidencia_guardada = str(r['Evidencia']).strip()
                             if evidencia_guardada and os.path.exists(evidencia_guardada):
-                                st.image(Image.open(evidencia_guardada), width=130, caption="📸 Evidencia Actual")
+                                st.image(Image.open(evidencia_guardada), use_container_width=True, caption="📸 Evidencia Actual")
                             
                             foto = st.file_uploader("Evidencia Fotográfica (Cierre 100%):", type=["jpg","png","jpeg","jfif"], key=f"i_{r['No']}") if nv_av == 100 else None
                             if foto: 
-                                st.image(Image.open(foto), width=100, caption="Vista Previa")
+                                st.image(Image.open(foto), use_container_width=True, caption="Vista Previa")
                             
                             st.markdown('<div style="margin-top: 10px;">', unsafe_allow_html=True)
                             if nv_av == 100:
