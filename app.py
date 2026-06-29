@@ -399,7 +399,18 @@ if not st.session_state.logged_in:
                 st.error("Credenciales incorrectas. Verifique el usuario y la contraseña.")
 
 else:
-    # ----------------- MENU PRINCIPAL Y NAVEGACIÓN (LOGGED IN) -----------------
+    # Nombre de la App arriba del logotipo
+    st.sidebar.markdown("""
+    <div style="text-align: center; padding: 8px 5px 2px 5px; margin-bottom: 0;">
+        <p style="font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 700; color: #EC2024; letter-spacing: 2px; text-transform: uppercase; margin: 0;">
+            Sistema de Control de Actividades
+        </p>
+        <p style="font-family: 'Montserrat', sans-serif; font-size: 9px; font-weight: 500; color: #94a3b8; letter-spacing: 1px; margin: 2px 0 0 0;">
+            S C A &nbsp;|&nbsp; Planta Metales
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
     if os.path.exists("LOGOTIPO COLOR (1).jfif"):
         st.sidebar.image("LOGOTIPO COLOR (1).jfif", use_container_width=True)
 
