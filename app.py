@@ -849,6 +849,7 @@ else:
                                             
                                             try:
                                                 df_disco.to_excel(ARCHIVO_DB, index=False)
+                                                subir_archivo_github(ARCHIVO_DB, "base_matriz_mce.xlsx", f"Auto-backup Excel (SCA-{row_no:03d})")
                                                 st.session_state.actividades = df_disco
                                                 st.success("🏁 ¡Cambios registrados con éxito!"); st.rerun()
                                             except Exception as e_save:
@@ -886,6 +887,7 @@ else:
                 
                 try:
                     df_disco.to_excel(ARCHIVO_DB, index=False)
+                    subir_archivo_github(ARCHIVO_DB, "base_matriz_mce.xlsx", f"Auto-backup Excel (Nueva Actividad: {n_id:03d})")
                     st.session_state.actividades = df_disco
                     # Guardar resumen en session_state para mostrar tras rerun
                     st.session_state.last_registered_activity = {
@@ -1045,6 +1047,7 @@ else:
                     st.session_state.actividades = df_modificado
                     try:
                         st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
+                        subir_archivo_github(ARCHIVO_DB, "base_matriz_mce.xlsx", "Auto-backup Excel (Edición Directa Administrador)")
                         st.success("✅ ¡Sincronizado!"); st.rerun()
                     except Exception as e_master: st.error(f"Error: {e_master}")
             else: st.info("No hay registros.")
@@ -1069,6 +1072,7 @@ else:
                     st.session_state.actividades = pd.concat([st.session_state.actividades, df_ex], ignore_index=True)
                     try:
                         st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
+                        subir_archivo_github(ARCHIVO_DB, "base_matriz_mce.xlsx", "Auto-backup Excel (Carga Masiva Administrador)")
                         st.success("¡Importado!"); st.rerun()
                     except Exception as e_b: st.error(f"Error: {e_b}")
 
