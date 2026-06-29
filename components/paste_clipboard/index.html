@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <script src="https://cdn.jsdelivr.net/npm/@streamlit/component-lib@1.0.0/dist/streamlit-component-lib.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: transparent;
+            font-family: 'Questrial', sans-serif;
+        }
+        #paste-container {
+            border: 2px dashed #D2D3D5;
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+            background-color: #F8FAFC;
+            color: #64748B;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            font-size: 13px;
+            font-weight: 500;
+            outline: none;
+        }
+        #paste-container:focus {
+            border-color: #EC2024;
+            background-color: #FEF2F2;
+            color: #EC2024;
+            box-shadow: 0 0 0 2px rgba(236, 32, 36, 0.2);
+        }
+        #preview {
+            max-width: 100%;
+            max-height: 100px;
+            margin-top: 8px;
+            display: none;
+            border-radius: 4px;
+            border: 1px solid #E2E8F0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        #status-msg {
+            font-size: 11px;
+            margin-top: 4px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="paste-container" tabindex="0">
+        📋 Clic aquí y presiona <b>Ctrl+V</b> para pegar imagen
+        <div id="status-msg"></div>
+        <img id="preview" />
+    </div>
+
+    <script>
+        let isLoaded = false;
+        function onRender(event) {
+            if (!isLoaded) {
+                isLoaded = true;
+                Streamlit.setFrameHeight(55);
+            }
+        }
+        Streamlit.events.addEventListener(Streamlit.RENDER_EVENT, onRender);
+
+        const container = document.getElementById('paste-container');
+        const preview = document.getElementById('preview');
+        const statusMsg = document.getElementById('status-msg');
+
+        container.addEventListener('paste', function (e) {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            let foundImage = false;
+            
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    foundImage = true;
+                    statusMsg.innerText = "⏳ Procesando imagen...";
+                    statusMsg.style.color = "#EC2024";
+                    
+                    const blob = items[i].getAsFile();
+                    const reader = new FileReader();
+                    reader.onload = function (event) {
+                        const base64Data = event.target.result;
+                        preview.src = base64Data;
+                        preview.style.display = 'inline-block';
+                        statusMsg.innerText = "✅ ¡Imagen cargada del portapapeles!";
+                        statusMsg.style.color = "#2ECC71";
+                        Streamlit.setFrameHeight(175);
+                        
+                        // Send data back to Streamlit
+                        Streamlit.setComponentValue(base64Data);
+                    };
+                    reader.readAsDataURL(blob);
+                    break;
+                }
+            }
+            if (!foundImage) {
+                statusMsg.innerText = "⚠️ No se detectó ninguna imagen en el portapapeles.";
+                statusMsg.style.color = "#E67E22";
+            }
+        });
+
+        // Set initial frame height
+        Streamlit.setFrameHeight(55);
+    </script>
+</body>
+</html>

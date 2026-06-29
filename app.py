@@ -90,6 +90,55 @@ if 'logged_in' not in st.session_state:
     st.session_state.rol = None
     st.session_state.usuario_actual = None
 
+# Declaración de componentes customizados
+import streamlit.components.v1 as components
+parent_dir = os.path.dirname(os.path.abspath(__file__))
+build_dir = os.path.join(parent_dir, "components", "paste_clipboard")
+paste_clipboard = components.declare_component("paste_clipboard", path=build_dir)
+
+def subir_archivo_github(ruta_local, ruta_github, mensaje_commit):
+    import requests, base64, json
+    try:
+        token_git = st.secrets.get("TOKEN_GITHUB", "")
+        if not token_git:
+            return False, "Token de GitHub no configurado en st.secrets."
+            
+        usuario_git = "jesusalbertomoraleslopez-byte"
+        repo_git = "matriz-mce-sigrama"
+        email_git = "jesusalbertomoraleslopez@gmail.com"
+        
+        url_api = f"https://api.github.com/repos/{usuario_git}/{repo_git}/contents/{ruta_github}"
+        cabeceras = {"Authorization": f"token {token_git}", "Accept": "application/vnd.github.v3+json"}
+        
+        # Obtener SHA si ya existe
+        sha_archivo = None
+        respuesta_get = requests.get(url_api, headers=cabeceras)
+        if respuesta_get.status_code == 200:
+            try:
+                sha_archivo = respuesta_get.json().get("sha")
+            except:
+                pass
+                
+        with open(ruta_local, "rb") as archivo_binario:
+            contenido_base64 = base64.b64encode(archivo_binario.read()).decode("utf-8")
+            
+        datos_payload = {
+            "message": mensaje_commit,
+            "content": contenido_base64,
+            "branch": "main",
+            "committer": {"name": usuario_git, "email": email_git}
+        }
+        if sha_archivo:
+            datos_payload["sha"] = sha_archivo
+            
+        respuesta_put = requests.put(url_api, headers=cabeceras, data=json.dumps(datos_payload))
+        if respuesta_put.status_code in (200, 201):
+            return True, "Archivo sincronizado con éxito en GitHub."
+        else:
+            return False, f"API de GitHub devolvió código {respuesta_put.status_code}: {respuesta_put.text}"
+    except Exception as e:
+        return False, str(e)
+
 # 1. MOTOR DE IMPORTACIÓN INTELIGENTE DE EXCEL
 def importar_registros_excel():
     if os.path.exists(ARCHIVO_DB):
@@ -709,24 +758,77 @@ else:
                             if foto: 
                                 st.image(Image.open(foto), width=100, caption="Vista Previa")
                             
+                            pasted_b64 = paste_clipboard(key=f"paste_{r['No']}") if nv_av == 100 else None
+                            
                             st.markdown('<div style="margin-top: 10px;">', unsafe_allow_html=True)
                             if st.button("Guardar Tarea", key=f"b_{r['No']}", use_container_width=True):
-                                if nv_av == 100 and not foto and not evidencia_guardada: 
-                                    st.error("⚠️ Faltan las fotografías físicas obligatorias para autorizar el cierre al 100%.")
+                                if nv_av == 100 and not foto and not pasted_b64 and not evidencia_guardada: 
+                                    st.error("⚠️ Faltan las fotografías físicas obligatorias para autorizar el cierre al 100% (Subir archivo o pegar desde portapapeles).")
                                 else:
                                     ruta_foto_final = evidencia_guardada
+                                    nombre_archivo_final = None
+                                    
+                                    # 1. Procesar archivo subido
                                     if foto is not None:
                                         try:
                                             img_abierta = Image.open(foto)
                                             if img_abierta.mode in ("RGBA", "P"): 
                                                 img_abierta = img_abierta.convert("RGB")
                                             img_abierta.thumbnail((800, 600), Image.Resampling.LANCZOS)
-                                            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                                            nombre_archivo_final = f"SCA-{int(r['No']):03d}_evidencia_{stamp}.jpg"
+                                            
+                                            fecha_cierre = datetime.now().strftime("%Y%m%d")
+                                            desc_sanitizada = normalizar_texto(r['Descripcion']).replace(' ', '_')
+                                            import re
+                                            desc_sanitizada = re.sub(r'[^a-zA-Z0-9_]', '', desc_sanitizada)[:50]
+                                            
+                                            nombre_archivo_final = f"SCA-{int(r['No']):03d}_{desc_sanitizada}_{fecha_cierre}.jpg"
                                             ruta_foto_final = os.path.join(CARPETA_EVIDENCIAS, nombre_archivo_final)
                                             img_abierta.save(ruta_foto_final, "JPEG", quality=65)
                                         except Exception as err_img: 
                                             st.error(f"Fallo al procesar captura: {err_img}")
+                                            
+                                    # 2. Procesar imagen pegada del portapapeles
+                                    elif pasted_b64 is not None and pasted_b64.startswith("data:image"):
+                                        try:
+                                            import base64
+                                            format_part, base64_data = pasted_b64.split(',', 1)
+                                            ext = "png"
+                                            if "jpeg" in format_part or "jpg" in format_part:
+                                                ext = "jpg"
+                                                
+                                            img_bytes = base64.b64decode(base64_data)
+                                            
+                                            fecha_cierre = datetime.now().strftime("%Y%m%d")
+                                            desc_sanitizada = normalizar_texto(r['Descripcion']).replace(' ', '_')
+                                            import re
+                                            desc_sanitizada = re.sub(r'[^a-zA-Z0-9_]', '', desc_sanitizada)[:50]
+                                            
+                                            nombre_archivo_final = f"SCA-{int(r['No']):03d}_{desc_sanitizada}_{fecha_cierre}.{ext}"
+                                            ruta_foto_final = os.path.join(CARPETA_EVIDENCIAS, nombre_archivo_final)
+                                            
+                                            with open(ruta_foto_final, "wb") as f_img:
+                                                f_img.write(img_bytes)
+                                                
+                                            # Comprimir imagen
+                                            try:
+                                                img_abierta = Image.open(ruta_foto_final)
+                                                if img_abierta.mode in ("RGBA", "P") and ext == "jpg":
+                                                    img_abierta = img_abierta.convert("RGB")
+                                                img_abierta.thumbnail((800, 600), Image.Resampling.LANCZOS)
+                                                img_abierta.save(ruta_foto_final, "JPEG" if ext == "jpg" else "PNG", quality=75)
+                                            except Exception as err_comp:
+                                                pass
+                                        except Exception as err_paste:
+                                            st.error(f"Fallo al decodificar imagen pegada: {err_paste}")
+                                            
+                                    # Subir la nueva evidencia a GitHub de inmediato como respaldo
+                                    if nombre_archivo_final and os.path.exists(ruta_foto_final):
+                                        mensaje_commit = f"Respaldo evidencia SCA-{int(r['No']):03d} ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})"
+                                        exito_git, msg_git = subir_archivo_github(ruta_foto_final, f"evidencias/{nombre_archivo_final}", mensaje_commit)
+                                        if exito_git:
+                                            st.toast(f"✅ Evidencia respaldada en GitHub: {nombre_archivo_final}")
+                                        else:
+                                            st.warning(f"⚠️ Alerta: Evidencia guardada localmente pero falló el respaldo en GitHub: {msg_git}")
                                     
                                     # Para evitar sobreescribir cambios de otros operadores, leemos el Excel fresco del disco
                                     df_disco = importar_registros_excel()
