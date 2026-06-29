@@ -479,6 +479,7 @@ else:
         "📥 Cargar Actividades (Usuario)", 
         "👑 Reglas de Liderazgo", 
         "📋 Reportes PDF",
+        "📖 Manual de la Aplicación",
         "🏭 Industria 4.0 & Stack"
     ]
     if st.session_state.rol == "Administrador":
@@ -1292,6 +1293,44 @@ else:
                 st.success("🎉 ¡Sin movimientos! No hay actividades registradas en los parámetros seleccionados.")
         else:
             st.info("La base de datos se encuentra vacía.")
+
+    elif opcion_menu == "📖 Manual de la Aplicación":
+        st.markdown('<h2 style="color: #EC2024; font-weight: bold; margin-bottom: 5px; font-family: \'Montserrat\', sans-serif;">📖 MANUAL DE USUARIO</h2>', unsafe_allow_html=True)
+        st.markdown('<p style="font-family: \'Montserrat\', sans-serif; font-size: 16px; font-weight: bold; color: #111111; margin-bottom: 20px; text-transform: uppercase;">SISTEMA DE CONTROL DE ACTIVIDADES</p>', unsafe_allow_html=True)
+        st.write("---")
+        
+        st.markdown("""
+        ### 🚀 Módulos Principales
+        
+        #### 1. 📊 Dashboard Principal
+        Panel de indicadores en tiempo real. Aquí podrás visualizar las métricas clave de la planta: el total de actividades, las que ya están terminadas y el porcentaje de avance promedio. Incluye gráficos de Pareto interactivos para analizar las cargas de trabajo por área y responsable.
+        
+        #### 2. 📋 Tabla de Control
+        Vista tabular completa de toda la base de datos de actividades. Puedes aplicar filtros por Área, Responsable, Prioridad y buscar por palabra clave. Además, el sistema resalta automáticamente en **ROJO** las actividades que están vencidas para darles prioridad inmediata.
+        
+        #### 3. 📝 Actualizar Mis Avances
+        Esta es la sección de operación diaria en piso de producción:
+        *   Busca tus actividades y ajusta la **barra de progreso** deslizable del 0% al 100%.
+        *   Agrega notas y comentarios en la **Bitácora** para informar cualquier desviación o detalle importante.
+        *   **Cierre al 100%**: Para completar una tarea es **obligatorio** proveer evidencia fotográfica (puedes subir la imagen o simplemente **Pegar desde el Portapapeles**).
+        *   Haz clic en **Guardar Tarea** para que tus avances y fotografías se suban automáticamente y de forma segura a GitHub.
+        
+        #### 4. 📥 Cargar Actividades (Usuario)
+        Sección para registrar nuevas tareas al sistema. Completa los campos obligatorios como Origen, Prioridad, Responsable, Área, Descripción y Fecha Compromiso. *(Requiere contraseña nivel colaborador).*
+        
+        #### 5. 👑 Reglas de Liderazgo
+        Lineamientos estratégicos, valores fundamentales y mejores prácticas para guiar el actuar diario y la toma de decisiones del equipo de líderes dentro de la Planta de Metales.
+        
+        #### 6. 📋 Reportes PDF
+        Generador automático de reportes profesionales en formato PDF, listos para descargar, imprimir o enviar por correo a la Dirección. Permite filtrar y generar el PDF específicamente de las tareas concluidas.
+        
+        #### 7. 🔐 Panel Administrador *(Solo Máster)*
+        Panel de alta seguridad para la gestión del sistema:
+        *   Dar de alta a nuevo personal/colaboradores.
+        *   Importar bases de datos masivas desde Excel (Plantillas).
+        *   Edición "en caliente" directa sobre la base de datos (corregir errores, reasignar responsables o borrar filas enteras permanentemente).
+        *   Botón de sincronización manual maestra con GitHub.
+        """)
 
     elif opcion_menu == "🏭 Industria 4.0 & Stack":
         st.markdown('<h2 style="color: #EC2024; font-weight: bold; margin-bottom: 5px; font-family: \'Montserrat\', sans-serif;">🏭 MANUFACTURA INTELIGENTE E INDUSTRIA 4.0</h2>', unsafe_allow_html=True)
