@@ -749,7 +749,6 @@ else:
                         with col_der:
                             comentario_limpio = "" if str(r['Comentario']).strip().lower() in ["nan", "none", ""] else str(r['Comentario'])
                             nv_co = st.text_input("Comentarios de bitácora:", value=comentario_limpio, key=f"c_{r['No']}")
-                            
                             evidencia_guardada = str(r['Evidencia']).strip()
                             if evidencia_guardada and os.path.exists(evidencia_guardada):
                                 st.image(Image.open(evidencia_guardada), width=130, caption="📸 Evidencia Actual")
@@ -758,10 +757,18 @@ else:
                             if foto: 
                                 st.image(Image.open(foto), width=100, caption="Vista Previa")
                             
-                            pasted_b64 = paste_clipboard(key=f"paste_{r['No']}") if nv_av == 100 else None
-                            
                             st.markdown('<div style="margin-top: 10px;">', unsafe_allow_html=True)
-                            if st.button("Guardar Tarea", key=f"b_{r['No']}", use_container_width=True):
+                            if nv_av == 100:
+                                col_btn1, col_btn2 = st.columns(2)
+                                with col_btn1:
+                                    guardar_clicked = st.button("Guardar Tarea", key=f"b_{r['No']}", use_container_width=True)
+                                with col_btn2:
+                                    pasted_b64 = paste_clipboard(key=f"paste_{r['No']}")
+                            else:
+                                guardar_clicked = st.button("Guardar Tarea", key=f"b_{r['No']}", use_container_width=True)
+                                pasted_b64 = None
+                            
+                            if guardar_clicked:
                                 if nv_av == 100 and not foto and not pasted_b64 and not evidencia_guardada: 
                                     st.error("⚠️ Faltan las fotografías físicas obligatorias para autorizar el cierre al 100% (Subir archivo o pegar desde portapapeles).")
                                 else:
