@@ -56,6 +56,8 @@
             display: none;
         }
     </style>
+    <!-- Cargar la biblioteca oficial de componentes de Streamlit -->
+    <script src="https://cdn.jsdelivr.net/npm/@streamlit/component-lib@1.4.0/dist/streamlit-component-lib.js"></script>
 </head>
 <body>
     <button id="btn-paste" tabindex="0">
@@ -67,121 +69,87 @@
     </div>
 
     <script>
-        const Streamlit = {
-            setComponentValue: function(value) {
-                window.parent.postMessage({
-                    isStreamlitMessage: true,
-                    type: "streamlit:setComponentValue",
-                    value: value
-                }, "*");
-            },
-            setFrameHeight: function(height) {
-                window.parent.postMessage({
-                    isStreamlitMessage: true,
-                    type: "streamlit:setFrameHeight",
-                    value: height
-                }, "*");
-            }
-        };
+        const btn = document.getElementById('btn-paste');
+        const previewContainer = document.getElementById('preview-container');
+        const preview = document.getElementById('preview');
+        const status = document.getElementById('status');
 
-        // Escuchar eventos de Streamlit para saber cuándo está listo
-        window.addEventListener("message", function(event) {
-            if (event.data && event.data.type === "streamlit:render") {
-                Streamlit.setFrameHeight(40);
-            }
-        });
+        // Función para procesar la imagen
+        function processImage(file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const base64Data = e.target.result;
+                preview.src = base64Data;
+                previewContainer.style.display = 'block';
+                status.style.display = 'block';
+                status.innerText = "✅ Imagen cargada del portapapeles";
+                status.style.color = "#2ECC71";
+                btn.innerText = "📋 Cambiar Imagen";
+                btn.style.backgroundColor = "#2ECC71";
+                btn.style.borderColor = "#2ECC71";
+                
+                // Redimensionar el frame para la vista previa
+                window.Streamlit.setFrameHeight(135);
+                // Enviar el valor a Streamlit
+                window.Streamlit.setComponentValue(base64Data);
+            };
+            reader.readAsDataURL(file);
+        }
 
-        // Inicialización segura del componente
-        function initComponent() {
-            // Enviar señal de que el componente está listo (Requerido por Streamlit)
-            window.parent.postMessage({
-                isStreamlitMessage: true,
-                type: "streamlit:componentReady",
-                apiVersion: 1
-            }, "*");
-            
-            const btn = document.getElementById('btn-paste');
-            const previewContainer = document.getElementById('preview-container');
-            const preview = document.getElementById('preview');
-            const status = document.getElementById('status');
-
-            // Function to process image file
-            function processImage(file) {
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    const base64Data = e.target.result;
-                    preview.src = base64Data;
-                    previewContainer.style.display = 'block';
-                    status.style.display = 'block';
-                    status.innerText = "✅ Imagen cargada del portapapeles";
-                    status.style.color = "#2ECC71";
-                    btn.innerText = "📋 Cambiar Imagen";
-                    btn.style.backgroundColor = "#2ECC71";
-                    btn.style.borderColor = "#2ECC71";
-                    Streamlit.setFrameHeight(135);
-                    Streamlit.setComponentValue(base64Data);
-                };
-                reader.readAsDataURL(file);
-            }
-
-            // Direct Clipboard API Click Handler
-            btn.addEventListener('click', async function() {
-                try {
-                    const clipboardItems = await navigator.clipboard.read();
-                    let found = false;
-                    for (const item of clipboardItems) {
-                        for (const type of item.types) {
-                            if (type.startsWith('image/')) {
-                                const blob = await item.getType(type);
-                                processImage(blob);
-                                found = true;
-                                break;
-                            }
+        // Listener del click para intentar usar el portapapeles directo
+        btn.addEventListener('click', async function() {
+            try {
+                const clipboardItems = await navigator.clipboard.read();
+                let found = false;
+                for (const item of clipboardItems) {
+                    for (const type of item.types) {
+                        if (type.startsWith('image/')) {
+                            const blob = await item.getType(type);
+                            processImage(blob);
+                            found = true;
+                            break;
                         }
-                        if (found) break;
                     }
-                    if (!found) {
-                        btn.innerText = "👉 Presiona Ctrl+V";
-                        btn.style.backgroundColor = "#E67E22";
-                        btn.style.borderColor = "#E67E22";
-                        btn.focus();
-                    }
-                } catch (err) {
+                    if (found) break;
+                }
+                if (!found) {
                     btn.innerText = "👉 Presiona Ctrl+V";
                     btn.style.backgroundColor = "#E67E22";
                     btn.style.borderColor = "#E67E22";
                     btn.focus();
                 }
-            });
+            } catch (err) {
+                btn.innerText = "👉 Presiona Ctrl+V";
+                btn.style.backgroundColor = "#E67E22";
+                btn.style.borderColor = "#E67E22";
+                btn.focus();
+            }
+        });
 
-            // Event listener for manual Ctrl+V paste
-            document.addEventListener('paste', function(e) {
-                const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-                let found = false;
-                for (let i = 0; i < items.length; i++) {
-                    if (items[i].type.indexOf('image') !== -1) {
-                        const blob = items[i].getAsFile();
-                        processImage(blob);
-                        found = true;
-                        break;
-                    }
+        // Event listener para cuando peguen con Ctrl+V
+        document.addEventListener('paste', function(e) {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            let found = false;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const blob = items[i].getAsFile();
+                    processImage(blob);
+                    found = true;
+                    break;
                 }
-                if (!found) {
-                    btn.innerText = "⚠️ No hay imagen en portapapeles";
-                    btn.style.backgroundColor = "#E67E22";
-                    btn.style.borderColor = "#E67E22";
-                }
-            });
-            
-            Streamlit.setFrameHeight(40);
-        }
+            }
+            if (!found) {
+                btn.innerText = "⚠️ No hay imagen en portapapeles";
+                btn.style.backgroundColor = "#E67E22";
+                btn.style.borderColor = "#E67E22";
+            }
+        });
 
-        // Ejecutar inicialización de forma segura según el estado de carga del documento
-        if (document.readyState === "complete" || document.readyState === "interactive") {
-            initComponent();
-        } else {
-            document.addEventListener("DOMContentLoaded", initComponent);
-        }
+        // Configuración de la API de Streamlit al renderizar
+        window.Streamlit.events.addEventListener(window.Streamlit.RENDER_EVENT, function(event) {
+            // Establecer la altura por defecto del botón
+            window.Streamlit.setFrameHeight(40);
+        });
     </script>
 </body>
 </html>
