@@ -70,6 +70,14 @@
             }
         };
 
+        // Escuchar eventos de Streamlit para saber cuándo está listo
+        window.addEventListener("message", function(event) {
+            if (event.data && event.data.type === "streamlit:render") {
+                // Establecer la altura del frame una vez que Streamlit está listo
+                Streamlit.setFrameHeight(55);
+            }
+        });
+
         // Enviar señal de que el componente está listo (Requerido por Streamlit)
         window.parent.postMessage({
             isStreamlitMessage: true,
@@ -99,7 +107,7 @@
                         preview.style.display = 'inline-block';
                         statusMsg.innerText = "✅ ¡Imagen cargada del portapapeles!";
                         statusMsg.style.color = "#2ECC71";
-                        Streamlit.setFrameHeight(175);
+                        Streamlit.setFrameHeight(185);
                         
                         // Enviar datos base64 a Streamlit
                         Streamlit.setComponentValue(base64Data);
@@ -113,9 +121,6 @@
                 statusMsg.style.color = "#E67E22";
             }
         });
-
-        // Altura inicial del cuadro de pegado
-        Streamlit.setFrameHeight(55);
     </script>
 </body>
 </html>
