@@ -1221,36 +1221,64 @@ else:
                         
                         pdf.set_font("Helvetica", "B", 9)
                         pdf.set_fill_color(207, 216, 220)
-                        pdf.cell(15, 6, txt="No", border=1, fill=True, align="C")
-                        pdf.cell(50, 6, txt="Responsable", border=1, fill=True)
-                        pdf.cell(145, 6, txt="Descripción de la Actividad", border=1, fill=True)
                         
-                        col_estatus = "Avance" if es_bloque_pendientes else "Estatus"
-                        pdf.cell(25, 6, txt=col_estatus, border=1, fill=True, align="C")
-                        
-                        col_fecha = "Fecha Límite" if es_bloque_pendientes else "Fecha Cierre"
-                        pdf.cell(40, 6, txt=col_fecha, border=1, fill=True, ln=True)
+                        if es_bloque_pendientes:
+                            pdf.cell(15, 6, txt="No", border=1, fill=True, align="C")
+                            pdf.cell(50, 6, txt="Responsable", border=1, fill=True)
+                            pdf.cell(145, 6, txt="Descripción de la Actividad", border=1, fill=True)
+                            pdf.cell(25, 6, txt="Avance", border=1, fill=True, align="C")
+                            pdf.cell(40, 6, txt="Fecha Límite", border=1, fill=True, ln=True)
+                        else:
+                            pdf.cell(12, 6, txt="No", border=1, fill=True, align="C")
+                            pdf.cell(35, 6, txt="Responsable", border=1, fill=True)
+                            pdf.cell(120, 6, txt="Descripción de la Actividad", border=1, fill=True)
+                            pdf.cell(28, 6, txt="Fecha Cierre", border=1, fill=True, align="C")
+                            pdf.cell(25, 6, txt="Estatus", border=1, fill=True, align="C")
+                            pdf.cell(55, 6, txt="Evidencia", border=1, fill=True, ln=True, align="C")
                         
                         pdf.set_font("Helvetica", "", 8.5)
                         pdf.set_text_color(0, 0, 0)
                         for _, fila in gp.iterrows():
                             desc_cruda = str(fila["Descripcion"])
-                            d_corta = desc_cruda[:82] + "..." if len(desc_cruda) > 85 else desc_cruda
                             r_limpio = limpiar_para_pdf(fila["Responsable"])
-                            d_corta = limpiar_para_pdf(d_corta)
                             
                             if es_bloque_pendientes:
+                                d_corta = desc_cruda[:82] + "..." if len(desc_cruda) > 85 else desc_cruda
+                                d_corta = limpiar_para_pdf(d_corta)
                                 pdf.set_fill_color(255, 243, 205)
                                 txt_avance = f"{fila['% Avance']}%"
+                                pdf.cell(15, 6, txt=str(fila["No"]), border=1, align="C")
+                                pdf.cell(50, 6, txt=r_limpio[:25], border=1)
+                                pdf.cell(145, 6, txt=d_corta, border=1)
+                                pdf.cell(25, 6, txt=txt_avance, border=1, fill=True, align="C")
+                                pdf.cell(40, 6, txt=str(fila["Fecha Compromiso"]), border=1, ln=True)
                             else:
+                                d_corta = desc_cruda[:65] + "..." if len(desc_cruda) > 65 else desc_cruda
+                                d_corta = limpiar_para_pdf(d_corta)
                                 pdf.set_fill_color(212, 237, 218)
                                 txt_avance = "Listo 100%"
-                            
-                            pdf.cell(15, 6, txt=str(fila["No"]), border=1, align="C")
-                            pdf.cell(50, 6, txt=r_limpio[:25], border=1)
-                            pdf.cell(145, 6, txt=d_corta, border=1)
-                            pdf.cell(25, 6, txt=txt_avance, border=1, fill=True, align="C")
-                            pdf.cell(40, 6, txt=str(fila["Fecha Compromiso"]), border=1, ln=True)
+                                h_row = 24
+                                
+                                start_y = pdf.get_y()
+                                if start_y + h_row > 190: 
+                                    pdf.add_page()
+                                    start_y = pdf.get_y()
+                                    
+                                pdf.cell(12, h_row, txt=str(fila["No"]), border=1, align="C")
+                                pdf.cell(35, h_row, txt=r_limpio[:20], border=1)
+                                pdf.cell(120, h_row, txt=d_corta, border=1)
+                                pdf.cell(28, h_row, txt=str(fila["Fecha Compromiso"]), border=1, align="C")
+                                pdf.cell(25, h_row, txt=txt_avance, border=1, fill=True, align="C")
+                                
+                                curr_x = pdf.get_x()
+                                pdf.cell(55, h_row, txt="", border=1, ln=True)
+                                
+                                ruta_ev = str(fila.get("Evidencia", "")).strip()
+                                if ruta_ev and os.path.exists(ruta_ev):
+                                    try:
+                                        pdf.image(ruta_ev, x=curr_x + 2, y=start_y + 2, h=20)
+                                    except Exception as e:
+                                        pdf.text(curr_x + 5, start_y + 12, txt="(Img Error)")
                         pdf.ln(4)
                         
                     return pdf.output()
