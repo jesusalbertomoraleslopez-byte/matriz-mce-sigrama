@@ -84,18 +84,23 @@
             }
         };
 
+        // Escuchar eventos de Streamlit para saber cuándo está listo
         window.addEventListener("message", function(event) {
             if (event.data && event.data.type === "streamlit:render") {
-                // Set initial height
+                // Establecer la altura del frame una vez que Streamlit está listo
                 Streamlit.setFrameHeight(40);
             }
         });
 
-        window.parent.postMessage({
-            isStreamlitMessage: true,
-            type: "streamlit:componentReady",
-            apiVersion: 1
-        }, "*");
+        // Enviar señal de que el componente está listo (Requerido por Streamlit)
+        // Lo envolvemos en DOMContentLoaded para asegurar que el navegador ya cargó el iframe
+        document.addEventListener("DOMContentLoaded", function() {
+            window.parent.postMessage({
+                isStreamlitMessage: true,
+                type: "streamlit:componentReady",
+                apiVersion: 1
+            }, "*");
+        });
 
         const btn = document.getElementById('btn-paste');
         const previewContainer = document.getElementById('preview-container');
