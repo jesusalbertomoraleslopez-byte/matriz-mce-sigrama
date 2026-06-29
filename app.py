@@ -92,7 +92,9 @@ if 'logged_in' not in st.session_state:
 
 # Declaración de componentes customizados
 import streamlit.components.v1 as components
-paste_clipboard = components.declare_component("paste_clipboard", path="components/paste_clipboard")
+parent_dir = os.path.dirname(os.path.abspath(__file__))
+build_dir = os.path.join(parent_dir, "components", "paste_clipboard")
+paste_clipboard = components.declare_component("paste_clipboard", path=build_dir)
 
 def subir_archivo_github(ruta_local, ruta_github, mensaje_commit):
     import requests, base64, json
