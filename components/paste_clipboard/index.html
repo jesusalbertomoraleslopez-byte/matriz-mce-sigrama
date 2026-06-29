@@ -20,7 +20,7 @@
             color: #FFFFFF;
             border: 1px solid #EC2024;
             border-radius: 4px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
             font-family: 'Montserrat', sans-serif;
             cursor: pointer;
@@ -87,95 +87,101 @@
         // Escuchar eventos de Streamlit para saber cuándo está listo
         window.addEventListener("message", function(event) {
             if (event.data && event.data.type === "streamlit:render") {
-                // Establecer la altura del frame una vez que Streamlit está listo
                 Streamlit.setFrameHeight(40);
             }
         });
 
-        // Enviar señal de que el componente está listo (Requerido por Streamlit)
-        // Lo envolvemos en DOMContentLoaded para asegurar que el navegador ya cargó el iframe
-        document.addEventListener("DOMContentLoaded", function() {
+        // Inicialización segura del componente
+        function initComponent() {
+            // Enviar señal de que el componente está listo (Requerido por Streamlit)
             window.parent.postMessage({
                 isStreamlitMessage: true,
                 type: "streamlit:componentReady",
                 apiVersion: 1
             }, "*");
-        });
+            
+            const btn = document.getElementById('btn-paste');
+            const previewContainer = document.getElementById('preview-container');
+            const preview = document.getElementById('preview');
+            const status = document.getElementById('status');
 
-        const btn = document.getElementById('btn-paste');
-        const previewContainer = document.getElementById('preview-container');
-        const preview = document.getElementById('preview');
-        const status = document.getElementById('status');
+            // Function to process image file
+            function processImage(file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const base64Data = e.target.result;
+                    preview.src = base64Data;
+                    previewContainer.style.display = 'block';
+                    status.style.display = 'block';
+                    status.innerText = "✅ Imagen cargada del portapapeles";
+                    status.style.color = "#2ECC71";
+                    btn.innerText = "📋 Cambiar Imagen";
+                    btn.style.backgroundColor = "#2ECC71";
+                    btn.style.borderColor = "#2ECC71";
+                    Streamlit.setFrameHeight(135);
+                    Streamlit.setComponentValue(base64Data);
+                };
+                reader.readAsDataURL(file);
+            }
 
-        // Function to process image file
-        function processImage(file) {
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const base64Data = e.target.result;
-                preview.src = base64Data;
-                previewContainer.style.display = 'block';
-                status.style.display = 'block';
-                status.innerText = "✅ Imagen cargada del portapapeles";
-                status.style.color = "#2ECC71";
-                btn.innerText = "📋 Cambiar Imagen";
-                btn.style.backgroundColor = "#2ECC71";
-                btn.style.borderColor = "#2ECC71";
-                Streamlit.setFrameHeight(135);
-                Streamlit.setComponentValue(base64Data);
-            };
-            reader.readAsDataURL(file);
-        }
-
-        // Direct Clipboard API Click Handler
-        btn.addEventListener('click', async function() {
-            try {
-                // Try reading clipboard items directly
-                const clipboardItems = await navigator.clipboard.read();
-                let found = false;
-                for (const item of clipboardItems) {
-                    for (const type of item.types) {
-                        if (type.startsWith('image/')) {
-                            const blob = await item.getType(type);
-                            processImage(blob);
-                            found = true;
-                            break;
+            // Direct Clipboard API Click Handler
+            btn.addEventListener('click', async function() {
+                try {
+                    const clipboardItems = await navigator.clipboard.read();
+                    let found = false;
+                    for (const item of clipboardItems) {
+                        for (const type of item.types) {
+                            if (type.startsWith('image/')) {
+                                const blob = await item.getType(type);
+                                processImage(blob);
+                                found = true;
+                                break;
+                            }
                         }
+                        if (found) break;
                     }
-                    if (found) break;
-                }
-                if (!found) {
+                    if (!found) {
+                        btn.innerText = "👉 Presiona Ctrl+V";
+                        btn.style.backgroundColor = "#E67E22";
+                        btn.style.borderColor = "#E67E22";
+                        btn.focus();
+                    }
+                } catch (err) {
                     btn.innerText = "👉 Presiona Ctrl+V";
                     btn.style.backgroundColor = "#E67E22";
                     btn.style.borderColor = "#E67E22";
                     btn.focus();
                 }
-            } catch (err) {
-                // Fallback to manual paste instructions
-                btn.innerText = "👉 Presiona Ctrl+V";
-                btn.style.backgroundColor = "#E67E22";
-                btn.style.borderColor = "#E67E22";
-                btn.focus();
-            }
-        });
+            });
 
-        // Event listener for manual Ctrl+V paste
-        document.addEventListener('paste', function(e) {
-            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-            let found = false;
-            for (let i = 0; i < items.length; i++) {
-                if (items[i].type.indexOf('image') !== -1) {
-                    const blob = items[i].getAsFile();
-                    processImage(blob);
-                    found = true;
-                    break;
+            // Event listener for manual Ctrl+V paste
+            document.addEventListener('paste', function(e) {
+                const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+                let found = false;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        const blob = items[i].getAsFile();
+                        processImage(blob);
+                        found = true;
+                        break;
+                    }
                 }
-            }
-            if (!found) {
-                btn.innerText = "⚠️ No hay imagen en portapapeles";
-                btn.style.backgroundColor = "#E67E22";
-                btn.style.borderColor = "#E67E22";
-            }
-        });
+                if (!found) {
+                    btn.innerText = "⚠️ No hay imagen en portapapeles";
+                    btn.style.backgroundColor = "#E67E22";
+                    btn.style.borderColor = "#E67E22";
+                }
+            });
+            
+            Streamlit.setFrameHeight(40);
+        }
+
+        // Ejecutar inicialización de forma segura según el estado de carga del documento
+        if (document.readyState === "complete" || document.readyState === "interactive") {
+            initComponent();
+        } else {
+            document.addEventListener("DOMContentLoaded", initComponent);
+        }
     </script>
 </body>
 </html>
