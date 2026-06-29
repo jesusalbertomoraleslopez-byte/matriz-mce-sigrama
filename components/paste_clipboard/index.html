@@ -2,7 +2,6 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <script src="https://cdn.jsdelivr.net/npm/@streamlit/component-lib@1.0.0/dist/streamlit-component-lib.js"></script>
     <style>
         body {
             margin: 0;
@@ -53,14 +52,30 @@
     </div>
 
     <script>
-        let isLoaded = false;
-        function onRender(event) {
-            if (!isLoaded) {
-                isLoaded = true;
-                Streamlit.setFrameHeight(55);
+        // Helper nativo para comunicación con Streamlit (evita depender de CDN externas)
+        const Streamlit = {
+            setComponentValue: function(value) {
+                window.parent.postMessage({
+                    isStreamlitMessage: true,
+                    type: "streamlit:setComponentValue",
+                    value: value
+                }, "*");
+            },
+            setFrameHeight: function(height) {
+                window.parent.postMessage({
+                    isStreamlitMessage: true,
+                    type: "streamlit:setFrameHeight",
+                    value: height
+                }, "*");
             }
-        }
-        Streamlit.events.addEventListener(Streamlit.RENDER_EVENT, onRender);
+        };
+
+        // Enviar señal de que el componente está listo (Requerido por Streamlit)
+        window.parent.postMessage({
+            isStreamlitMessage: true,
+            type: "streamlit:componentReady",
+            apiVersion: 1
+        }, "*");
 
         const container = document.getElementById('paste-container');
         const preview = document.getElementById('preview');
@@ -86,7 +101,7 @@
                         statusMsg.style.color = "#2ECC71";
                         Streamlit.setFrameHeight(175);
                         
-                        // Send data back to Streamlit
+                        // Enviar datos base64 a Streamlit
                         Streamlit.setComponentValue(base64Data);
                     };
                     reader.readAsDataURL(blob);
@@ -99,7 +114,7 @@
             }
         });
 
-        // Set initial frame height
+        // Altura inicial del cuadro de pegado
         Streamlit.setFrameHeight(55);
     </script>
 </body>
