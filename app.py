@@ -152,7 +152,7 @@ def limpiar_para_pdf(texto):
         texto = texto.replace(char, reemplazo)
     return texto.encode('latin-1', 'replace').decode('latin-1')
 
-st.set_page_config(page_title="SIGRAMA - Matriz MCE", layout="wide")
+st.set_page_config(page_title="SIGRAMA - Sistema de Control de Actividades (SCA)", layout="wide")
 
 # INYECCIÓN CSS INTEGRAL DE IMAGEN CORPORATIVA (Industria SIGRAMA)
 st.markdown("""
@@ -326,7 +326,7 @@ if os.path.exists(nombre_banner):
     st.image(imagen_banner, use_container_width=True)
 else:
     st.markdown('<h2 style="color: #EC2024; text-align: center; font-weight: bold; margin-top:0px; font-family: \'Montserrat\', sans-serif;">PLANTA METALES Y MAQUINADOS</h2>', unsafe_allow_html=True)
-    st.markdown('<p style="text-align: center; font-size: 24px; font-weight: bold; color: #111111; font-family: \'Montserrat\', sans-serif;">MATRIZ DE COMUNICACIÓN EFECTIVA</p>', unsafe_allow_html=True)
+    st.markdown('<p style="text-align: center; font-size: 24px; font-weight: bold; color: #111111; font-family: \'Montserrat\', sans-serif;">SISTEMA DE CONTROL DE ACTIVIDADES</p>', unsafe_allow_html=True)
 
 # ----------------- FLUJO DE AUTENTICACIÓN (LOGIN) -----------------
 if not st.session_state.logged_in:
@@ -355,7 +355,7 @@ if not st.session_state.logged_in:
     st.markdown('<hr style="border: 1px solid #EC2024; margin: 15px 0;">', unsafe_allow_html=True)
     st.markdown("""
     <h2 style="text-align: center; font-family: 'Montserrat', sans-serif; color: #111111; font-weight: 700; font-size: 28px; margin: 10px 0;">
-        <span style="color: #EC2024;">📢</span> Matriz de Comunicación Efectiva
+        <span style="color: #EC2024;">📋</span> Sistema de Control de Actividades
     </h2>
     """, unsafe_allow_html=True)
     st.markdown('<hr style="border: 1px solid #EC2024; margin: 15px 0;">', unsafe_allow_html=True)
@@ -364,7 +364,7 @@ if not st.session_state.logged_in:
     with col_log2:
         st.markdown('<div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); margin-top: 20px;">', unsafe_allow_html=True)
         st.markdown('<h3 style="font-family: \'Montserrat\', sans-serif; font-weight: 700; color: #111111; text-align: center; margin-top: 0; font-size: 20px;"><span style="color: #F59E0B;">🔑</span> Acceso al Sistema de Control</h3>', unsafe_allow_html=True)
-        st.markdown('<p style="font-family: \'Questrial\', sans-serif; color: #64748B; font-size: 14px; text-align: center; margin-bottom: 20px;">Por favor, ingrese sus credenciales para operar la Matriz de Comunicación Efectiva.</p>', unsafe_allow_html=True)
+        st.markdown('<p style="font-family: \'Questrial\', sans-serif; color: #64748B; font-size: 14px; text-align: center; margin-bottom: 20px;">Por favor, ingrese sus credenciales para operar el Sistema de Control de Actividades.</p>', unsafe_allow_html=True)
         
         username_input = st.text_input("Usuario:", key="login_username")
         password_input = st.text_input("Contraseña:", type="password", key="login_password")
@@ -517,7 +517,7 @@ else:
             st.plotly_chart(fig_l, use_container_width=True)
 
     elif opcion_menu == "📋 Tabla de Control":
-        st.subheader("Historial Completo de la Matriz de Comunicación")
+        st.subheader("Historial Completo del Sistema de Control de Actividades")
         df_t = pd.DataFrame(st.session_state.actividades)
         st.write("---")
         ct1, ct2, ct3 = st.columns(3)
@@ -557,9 +557,9 @@ else:
             def generar_excel_con_colores(df_local):
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    df_local.to_excel(writer, index=False, sheet_name='Historial_MCE')
+                    df_local.to_excel(writer, index=False, sheet_name='Historial_SCA')
                     workbook = writer.book
-                    worksheet = writer.sheets['Historial_MCE']
+                    worksheet = writer.sheets['Historial_SCA']
                     
                     for col in worksheet.columns:
                         max_len = max(len(str(cell.value or '')) for cell in col)
@@ -603,7 +603,7 @@ else:
             st.download_button(
                 label="📥 Descargar Reporte en Excel (.xlsx con Colores)",
                 data=excel_data,
-                file_name=f"Reporte_Matriz_MCE_{datetime.now().strftime('%d-%b-%y')}.xlsx",
+                file_name=f"Reporte_SCA_{datetime.now().strftime('%d-%b-%y')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
 
@@ -711,7 +711,7 @@ else:
                                                 img_abierta = img_abierta.convert("RGB")
                                             img_abierta.thumbnail((800, 600), Image.Resampling.LANCZOS)
                                             stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                                            nombre_archivo_final = f"MCE-{int(r['No']):03d}_evidencia_{stamp}.jpg"
+                                            nombre_archivo_final = f"SCA-{int(r['No']):03d}_evidencia_{stamp}.jpg"
                                             ruta_foto_final = os.path.join(CARPETA_EVIDENCIAS, nombre_archivo_final)
                                             img_abierta.save(ruta_foto_final, "JPEG", quality=65)
                                         except Exception as err_img: 
@@ -835,8 +835,8 @@ else:
                 try:
                     df_guardar = pd.DataFrame(st.session_state.actividades)
                     with pd.ExcelWriter(ARCHIVO_DB, engine='openpyxl') as w:
-                        df_guardar.to_excel(w, index=False, sheet_name='Base_MCE')
-                        ws = w.sheets['Base_MCE']
+                        df_guardar.to_excel(w, index=False, sheet_name='Base_SCA')
+                        ws = w.sheets['Base_SCA']
                         anchos = {'A': 10, 'B': 25, 'C': 15, 'D': 15, 'E': 22, 'F': 18, 'G': 45, 'H': 12, 'I': 20, 'J': 25, 'K': 40}
                         for col, ancho in anchos.items(): ws.column_dimensions[col].width = ancho
                         
@@ -887,7 +887,7 @@ else:
                             st.stop()
 
                     with open(ARCHIVO_DB, "rb") as archivo_binario: excel_base64 = base64.b64encode(archivo_binario.read()).decode("utf-8")
-                    datos_payload = {"message": f"Sincronizacion MCE Planta ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})", "content": excel_base64, "branch": "main", "committer": {"name": usuario_git, "email": email_git}}
+                    datos_payload = {"message": f"Sincronizacion SCA Planta ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})", "content": excel_base64, "branch": "main", "committer": {"name": usuario_git, "email": email_git}}
                     if sha_archivo: datos_payload["sha"] = sha_archivo
                     respuesta_put = requests.put(url_api, headers=cabeceras, data=json.dumps(datos_payload))
                     if respuesta_put.status_code in (200, 201):
@@ -903,8 +903,8 @@ else:
                 guardar_catalogos(st.session_state.personal, st.session_state.areas)
                 st.success("Registrado."); st.rerun()
         with t2:
-            st.subheader("✏️ Edición en Caliente de la Matriz MCE")
-            st.warning("⚠️ Nota: Solo el Administrador está autorizado para borrar registros físicamente en la matriz.")
+            st.subheader("✏️ Edición en Caliente del Sistema de Control de Actividades")
+            st.warning("⚠️ Nota: Solo el Administrador está autorizado para borrar registros físicamente en el sistema.")
             df_editable = pd.DataFrame(st.session_state.actividades)
             if not df_editable.empty:
                 configuracion_columnas = {
@@ -921,7 +921,7 @@ else:
                     "Evidencia": st.column_config.TextColumn("Ruta Evidencia", disabled=True)
                 }
                 df_modificado = st.data_editor(df_editable, column_config=configuracion_columnas, use_container_width=True, hide_index=True, num_rows="dynamic", key="editor_tabla_master")
-                if st.button("💾 CONFIRMAR Y GUARDAR CAMBIOS EN LA MATRIZ", type="primary", use_container_width=True):
+                if st.button("💾 CONFIRMAR Y GUARDAR CAMBIOS EN EL SISTEMA", type="primary", use_container_width=True):
                     st.session_state.actividades = df_modificado
                     try:
                         st.session_state.actividades.to_excel(ARCHIVO_DB, index=False)
@@ -938,7 +938,7 @@ else:
                 ws = w.sheets['Plantilla']
                 anchos = {'A': 25, 'B': 15, 'C': 15, 'D': 22, 'E': 15, 'F': 45, 'G': 12, 'H': 20, 'I': 25}
                 for col, ancho in anchos.items(): ws.column_dimensions[col].width = ancho
-            st.download_button(label="📥 Descargar Plantilla Oficial (.xlsx)", data=buf.getvalue(), file_name="Plantilla_MCE.xlsx", key="btn_download_template_master")
+            st.download_button(label="📥 Descargar Plantilla Oficial (.xlsx)", data=buf.getvalue(), file_name="Plantilla_SCA.xlsx", key="btn_download_template_master")
             st.write("---")
             ex = st.file_uploader("Subir Excel modificado", type=["xlsx"], key="uploader_bulk_master")
             if ex is not None:
@@ -1180,7 +1180,7 @@ else:
             with st.expander("📝 Justificación de Manufactura Inteligente", expanded=True):
                 st.markdown("""
                 En la era de la **Industria 4.0**, la digitalización de piso de producción (**Gemba**) es clave para maximizar la productividad y responder ágilmente a contingencias. 
-                La **Matriz de Comunicación Efectiva (MCE)** de Planta Metales y Maquinados sustituye los flujos de papel y hojas de cálculo locales por una plataforma web reactiva y centralizada.
+                El **Sistema de Control de Actividades (SCA)** de Planta Metales y Maquinados sustituye los flujos de papel y hojas de cálculo locales por una plataforma web reactiva y centralizada.
                 
                 *   **Eliminación de Silos de Información**: Toda la planta visualiza el mismo estado en tiempo real, desde operadores hasta la dirección.
                 *   **Reducción de Tiempos Muertos**: La comunicación instantánea de desviaciones agiliza la respuesta de mantenimiento, calidad e ingeniería.
@@ -1204,7 +1204,7 @@ else:
                 2.  **Base de Datos**: **Pandas + Excel (Openpyxl)**, facilitando la edición interactiva directa en piso y la persistencia de datos tradicional.
                 3.  **Visualizaciones**: **Plotly**, generando gráficos de Pareto e indicadores de rendimiento interactivos.
                 4.  **Generación de PDF**: **FPDF2**, optimizado para reportes corporativos estructurados con soporte de caracteres en español.
-                5.  **Control de Versiones & API**: **GitHub API REST**, respaldando la matriz Excel en la nube de forma transparente y encriptada.
+                5.  **Control de Versiones & API**: **GitHub API REST**, respaldando la base de datos Excel en la nube de forma transparente y encriptada.
                 """)
                 
             with st.expander("🔐 Guía de Acceso (Usuarios y Contraseñas)", expanded=True):
