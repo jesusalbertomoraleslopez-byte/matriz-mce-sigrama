@@ -811,9 +811,10 @@ else:
         # Filtro de responsable autodetectado y bloqueado para Colaboradores
         if st.session_state.rol == "Colaborador":
             u = st.session_state.usuario_actual
-            st.markdown(f"<div style='background-color:#E2E8F0; padding:10px; border-radius:4px; margin-bottom:15px; font-weight:bold;'>👤 Colaborador Activo: {u}</div>", unsafe_allow_html=True)
         else:
             u = st.selectbox("Seleccionar Responsable:", list(st.session_state.personal.keys()))
+            
+        st.markdown(f'<h1 style="color: #EC2024; font-family: \\\'Montserrat\\\', sans-serif; font-weight: 900; text-transform: uppercase; font-size: 42px; margin-top: 10px; margin-bottom: 25px; border-bottom: 2px solid #E2E8F0; padding-bottom: 15px;">👨‍🔧 {u}</h1>', unsafe_allow_html=True)
         
         df_usuario = pd.DataFrame(st.session_state.actividades)
         if not df_usuario.empty and "Responsable" in df_usuario.columns:
