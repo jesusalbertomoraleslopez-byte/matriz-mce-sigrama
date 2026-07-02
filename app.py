@@ -860,8 +860,8 @@ else:
                 if tipo_vista == "📄 Vista Detalle (Lista)":
                     st.markdown('''
                     <style>
-                    .tbl-hdr { font-family:'Montserrat', sans-serif; font-size:14px; font-weight:700; color:#111; padding-bottom:8px; border-bottom:2px solid #EC2024; margin-bottom:10px; }
-                    .tbl-row { font-family:'Questrial', sans-serif; font-size:13px; color:#333; display:flex; align-items:center; }
+                    .tbl-hdr { font-family:'Montserrat', sans-serif; font-size:16px; font-weight:700; color:#111; padding-bottom:8px; border-bottom:2px solid #EC2024; margin-bottom:10px; }
+                    .tbl-row { font-family:'Questrial', sans-serif; font-size:15px; color:#333; display:flex; align-items:center; }
                     </style>
                     ''', unsafe_allow_html=True)
                     
@@ -884,10 +884,10 @@ else:
                         progreso_actual = int(r['% Avance'])
                         color_progreso = "#2ECC71" if progreso_actual == 100 else "#EC2024"
                         row[3].markdown(f'''
-                        <div style="margin-top:2px; width:100%; background-color:#E2E8F0; border-radius:4px; height:10px; overflow:hidden;">
+                        <div style="margin-top:2px; width:100%; background-color:#E2E8F0; border-radius:4px; height:12px; overflow:hidden;">
                             <div style="width:{progreso_actual}%; background-color:{color_progreso}; height:100%;"></div>
                         </div>
-                        <div style="font-size:10px; text-align:right; font-weight:bold; color:#111;">{progreso_actual}%</div>
+                        <div style="font-size:13px; text-align:right; font-weight:bold; color:#111;">{progreso_actual}%</div>
                         ''', unsafe_allow_html=True)
                         
                         with row[4]:
