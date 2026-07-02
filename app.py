@@ -852,6 +852,7 @@ else:
             
             tipo_vista = st.radio("Tipo de Vista:", ["🔲 Vista Cuadrícula (Miniaturas)", "📄 Vista Detalle (Lista)"], horizontal=True)
             st.write("---")
+            st.markdown(f'<h1 style="color: #EC2024; font-family: \'Montserrat\', sans-serif; font-weight: 900; text-transform: uppercase; font-size: 38px; margin-top: 10px; margin-bottom: 25px; border-bottom: 2px solid #E2E8F0; padding-bottom: 15px;">👨‍🔧 Actividades de: {u}</h1>', unsafe_allow_html=True)
             
             if df_filtrado.empty:
                 st.info(f"📋 No hay tareas en la clasificación '{clasificacion}' para {u}.")
