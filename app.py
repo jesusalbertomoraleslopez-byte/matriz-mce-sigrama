@@ -209,11 +209,11 @@ def renderizar_formulario_tarea(r):
         nv_co = st.text_input("Comentarios de bitácora:", value=comentario_limpio, key=f"c_{r['No']}")
         evidencia_guardada = str(r['Evidencia']).strip()
         if evidencia_guardada and os.path.exists(evidencia_guardada):
-            st.image(Image.open(evidencia_guardada), use_container_width=True, caption="📸 Evidencia Actual")
+            st.image(evidencia_guardada, width="stretch", caption="📸 Evidencia Actual")
         
         foto = st.file_uploader("Evidencia Fotográfica (Cierre 100%):", type=["jpg","png","jpeg","jfif"], key=f"i_{r['No']}") if nv_av == 100 else None
         if foto: 
-            st.image(Image.open(foto), use_container_width=True, caption="Vista Previa")
+            st.image(foto, width="stretch", caption="Vista Previa")
         
         st.markdown('<div style="margin-top: 10px;">', unsafe_allow_html=True)
         if nv_av == 100:
@@ -319,7 +319,7 @@ def dialogo_editar_tarea(r):
 @st.dialog("🖼️ Evidencia Fotográfica", width="large")
 def dialogo_ver_imagen(ruta_evidencia, num_tarea):
     st.markdown(f"<h3 style='text-align: center; color: #111111;'>Actividad No. {num_tarea}</h3>", unsafe_allow_html=True)
-    st.image(Image.open(ruta_evidencia), use_container_width=True)
+    st.image(ruta_evidencia, width="stretch")
 
 if 'actividades' not in st.session_state:
 
@@ -508,8 +508,7 @@ def crear_grafico_pareto(df, columna, titulo):
 # 5. Carga e Inyección del Banner Corporativo Superior
 nombre_banner = "LIDERAZGO PLANTA METALAES IMAGEN.png"
 if os.path.exists(nombre_banner):
-    imagen_banner = Image.open(nombre_banner)
-    st.image(imagen_banner, use_container_width=True)
+    st.image(nombre_banner, width="stretch")
 else:
     st.markdown('<h2 style="color: #EC2024; text-align: center; font-weight: bold; margin-top:0px; font-family: \'Montserrat\', sans-serif;">PLANTA METALES Y MAQUINADOS</h2>', unsafe_allow_html=True)
     st.markdown('<p style="text-align: center; font-size: 24px; font-weight: bold; color: #111111; font-family: \'Montserrat\', sans-serif;">SISTEMA DE CONTROL DE ACTIVIDADES</p>', unsafe_allow_html=True)
@@ -518,7 +517,7 @@ else:
 if not st.session_state.logged_in:
     # Sidebar sin navegación cuando no ha iniciado sesión
     if os.path.exists("LOGOTIPO COLOR (1).jfif"):
-        st.sidebar.image("LOGOTIPO COLOR (1).jfif", use_container_width=True)
+        st.sidebar.image("LOGOTIPO COLOR (1).jfif", width="stretch")
         
     st.sidebar.markdown("""
     <div style="background-color: #0F172A; border: 1px solid #1E293B; padding: 15px; border-radius: 6px; text-align: center; margin-top: 20px;">
@@ -598,7 +597,7 @@ else:
     """, unsafe_allow_html=True)
 
     if os.path.exists("LOGOTIPO COLOR (1).jfif"):
-        st.sidebar.image("LOGOTIPO COLOR (1).jfif", use_container_width=True)
+        st.sidebar.image("LOGOTIPO COLOR (1).jfif", width="stretch")
 
     st.sidebar.markdown(f"""
     <div style="background-color: #0F172A; border: 1px solid #1E293B; padding: 10px; border-radius: 6px; text-align: center; margin-bottom: 15px;">
@@ -928,7 +927,7 @@ else:
                                 evidencia_guardada = str(r['Evidencia']).strip()
                                 if progreso_actual == 100 and evidencia_guardada and os.path.exists(evidencia_guardada):
                                     try:
-                                        st.image(Image.open(evidencia_guardada), use_container_width=True)
+                                        st.image(evidencia_guardada, width="stretch")
                                     except:
                                         pass
                                 elif progreso_actual == 100:
