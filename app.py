@@ -514,6 +514,26 @@ else:
     st.markdown('<p style="text-align: center; font-size: 24px; font-weight: bold; color: #111111; font-family: \'Montserrat\', sans-serif;">SISTEMA DE CONTROL DE ACTIVIDADES</p>', unsafe_allow_html=True)
 
 # ----------------- FLUJO DE AUTENTICACIÓN (LOGIN) -----------------
+# Soporte SSO desde Concentradora SIGRAMA
+try:
+    qp = dict(st.query_params) if hasattr(st, "query_params") else {}
+    sso_token = qp.get("sso_token")
+    if isinstance(sso_token, list): sso_token = sso_token[0] if sso_token else ""
+    sso_user = qp.get("sso_user")
+    if isinstance(sso_user, list): sso_user = sso_user[0] if sso_user else ""
+    sso_role = qp.get("sso_role", "Usuario")
+    if isinstance(sso_role, list): sso_role = sso_role[0] if sso_role else ""
+
+    if sso_token == "SIGRAMA_AUTH_TOKEN" and sso_user:
+        st.session_state.logged_in = True
+        st.session_state.usuario_actual = sso_user
+        if sso_role in ["Admin", "Administrador"] or sso_user.lower() in ["jmorales", "admin", "administrador"]:
+            st.session_state.rol = "Administrador"
+        else:
+            st.session_state.rol = "Operador"
+except Exception:
+    pass
+
 if not st.session_state.logged_in:
     # Sidebar sin navegación cuando no ha iniciado sesión
     if os.path.exists("LOGOTIPO COLOR (1).jfif"):
@@ -568,10 +588,10 @@ if not st.session_state.logged_in:
             
             pwd_clean = password_input.strip()
             
-            if username_norm in ["admin", "administrador"] and pwd_clean == "SigramaMetales2026":
+            if (username_norm in ["admin", "administrador", "jmorales"]) and (pwd_clean in ["SigramaMetales2026", "SigramaAdmin2026"]):
                 st.session_state.logged_in = True
                 st.session_state.rol = "Administrador"
-                st.session_state.usuario_actual = "Administrador"
+                st.session_state.usuario_actual = "jmorales" if username_norm == "jmorales" else "Administrador"
                 st.success("Sesión iniciada como Administrador.")
                 st.rerun()
             elif colaborador_encontrado is not None and pwd_clean.lower() == "metales":
@@ -1487,7 +1507,7 @@ else:
                     *   *Contraseña*: `Metales`
                     *   *Permisos*: Crear y registrar nuevas actividades en el catálogo.
                 *   **Administrador (Máster)**:
-                    *   *Acceso*: Protegido por contraseña máster.
-                    *   *Contraseña*: `SigramaMetales2026`
+                    *   *Usuarios*: `jmorales`, `admin`, `administrador`
+                    *   *Contraseña*: `SigramaAdmin2026` / `SigramaMetales2026`
                     *   *Permisos*: Registro de nuevos colaboradores, importación de plantilla masiva, sincronización manual/respaldo en GitHub y **edición en caliente / borrado físico de registros** (Solo el Administrador cuenta con estos permisos).
                 """)
