@@ -506,10 +506,6 @@ components.html("""
 </script>
 """, height=0)
 
-# === BANNER SIGRAMA ===
-_banner_path = Path(__file__).resolve().parent / "banner_sigrama.png"
-if _banner_path.exists():
-    st.image(str(_banner_path), use_container_width=True)
 
 LISTA_CLASIFICACIONES = ["Acuerdos", "Programa de Actividades", "Actividades Sujeridas", "Dirección", "Problema de Calidad", "Problema de Seguridad", "Lista de Pendientes", "Auto Asignado", "Plan de Control y Monitoreo", "Mejoras", "Investigación", "Manuales", "Procesos"]
 
