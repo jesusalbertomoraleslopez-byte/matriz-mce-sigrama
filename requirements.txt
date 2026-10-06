@@ -5,3 +5,4 @@ openpyxl
 fpdf2
 Pillow
 requests
+google-cloud-storage

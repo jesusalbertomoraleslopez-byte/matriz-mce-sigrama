@@ -19,6 +19,16 @@ CATALOGO_FILE = "catalogos.json"
 if not os.path.exists(CARPETA_EVIDENCIAS):
     os.makedirs(CARPETA_EVIDENCIAS)
 
+# Sincronización inicial desde Google Cloud Storage (Cloud Run)
+if os.environ.get("GCS_BUCKET"):
+    try:
+        import gcs_sync
+        if "_gcs_initial_sync" not in st.session_state:
+            gcs_sync.sync_from_gcs()
+            st.session_state["_gcs_initial_sync"] = True
+    except Exception as _e_init:
+        print(f"Error sincronizando GCS al iniciar: {_e_init}")
+
 Image.MAX_IMAGE_PIXELS = None
 
 # Helper para normalizar texto (elimina acentos y convierte a minúsculas)
@@ -100,6 +110,17 @@ paste_clipboard = components.declare_component("paste_clipboard", path=build_dir
 
 def subir_archivo_github(ruta_local, ruta_github, mensaje_commit):
     import requests, base64, json
+
+    # Persistencia en Google Cloud Storage (Cloud Run)
+    if os.environ.get("GCS_BUCKET"):
+        try:
+            import gcs_sync
+            gcs_sync.push_file_to_gcs(ruta_local)
+        except Exception as _e_gcs:
+            print(f"Error subiendo {ruta_local} a GCS: {_e_gcs}")
+        if not st.secrets.get("TOKEN_GITHUB", ""):
+            return True, "Archivo persistido con éxito en Google Cloud Storage."
+
     try:
         token_git = st.secrets.get("TOKEN_GITHUB", "")
         if not token_git:
