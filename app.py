@@ -547,9 +547,11 @@ def crear_grafico_pareto(df, columna, titulo):
     return fig
 
 # 5. Carga e Inyección del Banner Corporativo Superior
-nombre_banner = "LIDERAZGO PLANTA METALAES IMAGEN.png"
-if os.path.exists(nombre_banner):
-    st.image(nombre_banner, width="stretch")
+_banner_path = Path(__file__).resolve().parent / "LIDERAZGO PLANTA METALAES IMAGEN.png"
+if _banner_path.exists():
+    st.image(str(_banner_path), use_container_width=True)
+elif os.path.exists("LIDERAZGO PLANTA METALAES IMAGEN.png"):
+    st.image("LIDERAZGO PLANTA METALAES IMAGEN.png", use_container_width=True)
 else:
     st.markdown('<h2 style="color: #EC2024; text-align: center; font-weight: bold; margin-top:0px; font-family: \'Montserrat\', sans-serif;">PLANTA METALES Y MAQUINADOS</h2>', unsafe_allow_html=True)
     st.markdown('<p style="text-align: center; font-size: 24px; font-weight: bold; color: #111111; font-family: \'Montserrat\', sans-serif;">SISTEMA DE CONTROL DE ACTIVIDADES</p>', unsafe_allow_html=True)
